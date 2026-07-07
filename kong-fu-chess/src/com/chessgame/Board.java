@@ -1,4 +1,6 @@
 package com.chessgame;
+import java.util.List;
+import java.util.ArrayList;
 class Board {
     private final List<String[]> grid;
 

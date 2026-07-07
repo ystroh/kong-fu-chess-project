@@ -1,4 +1,10 @@
 package com.chessgame;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
 class GameEngine {
     private final Board board;
     private final List<ActiveMove> ongoingMoves = new ArrayList<>();
