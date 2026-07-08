@@ -1,4 +1,3 @@
-package com.chessgame;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
@@ -14,7 +13,7 @@ class GameEngine {
     private long gameClock = 0;
     private GameState currentState = GameState.INIT;
     private int expectedCols = -1;
-
+    private boolean gameOver = false;
     private static final String VALID_TOKEN_REGEX = "^(\\.|[wb][KQRBNP])$";
 
     public GameEngine() {
@@ -80,35 +79,42 @@ class GameEngine {
      * מנתב את הפקודות (click, wait, print) לטיפול המתאים.
      */
     private void handleCommandParsing(String line) {
-        if (line.startsWith("click")) {
-            executeClickCommand(line);
-        } else if (line.startsWith("wait")) {
-            executeWaitCommand(line);
-        } else if (line.equals("print board")) {
-            board.print();
-        }
+    if (line.startsWith("click")) {
+        if (gameOver) return;
+        executeClickCommand(line);
+    } else if (line.startsWith("wait")) {
+        if (gameOver) return;
+        executeWaitCommand(line);
+    } else if (line.equals("print board")) {
+        board.print();
     }
+}
 
     /**
      * בודק האם מסלול התנועה של כלי נחסם על ידי מהלכים אחרים שמתבצעים כעת.
      */
-    private boolean isPathBlocked(int fromRow, int fromCol, int toRow, int toCol) {
-        List<int[]> newPath = getPathCoordinates(fromRow, fromCol, toRow, toCol);
+  private boolean isPathBlocked(int fromRow, int fromCol, int toRow, int toCol) {
+    int deltaRow = Math.abs(toRow - fromRow);
+    int deltaCol = Math.abs(toCol - fromCol);
+    boolean isStraightLine = deltaRow == 0 || deltaCol == 0 || deltaRow == deltaCol;
+    if (!isStraightLine) return false;
 
-        for (ActiveMove move : ongoingMoves) {
-            List<int[]> activePath = getPathCoordinates(move.fromRow, move.fromCol, move.toRow, move.toCol);
+    List<int[]> newPath = getPathCoordinates(fromRow, fromCol, toRow, toCol);
 
-            for (int[] p1 : newPath) {
-                for (int[] p2 : activePath) {
-                    if (p1[0] == p2[0] && p1[1] == p2[1]) {
-                        return true;
-                    }
+    for (ActiveMove move : ongoingMoves) {
+        List<int[]> activePath = getPathCoordinates(move.fromRow, move.fromCol, move.toRow, move.toCol);
+
+        for (int[] p1 : newPath) {
+            for (int[] p2 : activePath) {
+                if (p1[0] == p2[0] && p1[1] == p2[1]) {
+                    return true;
                 }
             }
         }
-        return false;
     }
-
+    return false;
+}
+    
     /**
      * מחזיר רשימת כל המשבצות שהכלי עובר בהן במסלולו.
      */
@@ -145,83 +151,103 @@ class GameEngine {
      * מטפל בפקודת click - בחירת כלי או ביצוע מהלך.
      */
     private void executeClickCommand(String line) {
-        String[] parts = line.split("\\s+");
-        if (parts.length < 3) return;
+    String[] parts = line.split("\\s+");
+    if (parts.length < 3) return;
 
-        int x = Integer.parseInt(parts[1]);
-        int y = Integer.parseInt(parts[2]);
+    int x = Integer.parseInt(parts[1]);
+    int y = Integer.parseInt(parts[2]);
 
-        if (x < 0 || y < 0) return;
+    if (x < 0 || y < 0) return;
 
-        int col = x / 100;
-        int row = y / 100;
+    int col = x / 100;
+    int row = y / 100;
 
-        if (!board.isValidCell(row, col)) return;
+    if (!board.isValidCell(row, col)) return;
 
-        String clickedPiece = board.getPiece(row, col);
+    String clickedPiece = board.getPiece(row, col);
 
-        if (selectedRow == -1 && selectedCol == -1) {
-            if (!clickedPiece.equals(".")) {
-                if (isPieceMoving(row, col)) return;
-                selectedRow = row;
-                selectedCol = col;
-            }
-        } else {
+    if (selectedRow == -1 && selectedCol == -1) {
+        if (!clickedPiece.equals(".")) {
             if (isPieceMoving(row, col)) return;
-            if (isPathBlocked(selectedRow, selectedCol, row, col)) return;
+            selectedRow = row;
+            selectedCol = col;
+        }
+    } else {
+        if (isPieceMoving(row, col)) return;
 
-            String selectedPiece = board.getPiece(selectedRow, selectedCol);
+        String selectedPiece = board.getPiece(selectedRow, selectedCol);
 
-            if (!clickedPiece.equals(".") && isFriendly(selectedPiece, clickedPiece)) {
-                if (isPieceMoving(row, col)) return;
-                selectedRow = row;
-                selectedCol = col;
-            } else {
-                MoveValidator validator = new MoveValidator(board, selectedPiece, selectedRow, selectedCol, row, col);
+        if (!clickedPiece.equals(".") && isFriendly(selectedPiece, clickedPiece)) {
+            selectedRow = row;
+            selectedCol = col;
+        } else {
+            MoveValidator validator = new MoveValidator(board, selectedPiece, selectedRow, selectedCol, row, col);
 
-                if (!validator.isValid()) {
-                    selectedRow = -1;
-                    selectedCol = -1;
-                    return;
-                }
-
-                if (isSquareReserved(row, col)) {
-                    selectedRow = -1;
-                    selectedCol = -1;
-                    return;
-                }
-
-                int distance = Math.max(Math.abs(row - selectedRow), Math.abs(col - selectedCol));
-                long moveDuration = distance * 1000L;
-                long arrivalTime = gameClock + moveDuration;
-
-                ongoingMoves.add(new ActiveMove(selectedRow, selectedCol, row, col, selectedPiece, arrivalTime));
+            if (!validator.isValid()) {
                 selectedRow = -1;
                 selectedCol = -1;
+                return;
             }
+
+            if (isPathBlocked(selectedRow, selectedCol, row, col)) {
+                selectedRow = -1;
+                selectedCol = -1;
+                return;
+            }
+
+            if (isSquareReserved(row, col)) {
+                selectedRow = -1;
+                selectedCol = -1;
+                return;
+            }
+
+            int distance = Math.max(Math.abs(row - selectedRow), Math.abs(col - selectedCol));
+            long moveDuration = distance * 1000L;
+            long arrivalTime = gameClock + moveDuration;
+
+            ongoingMoves.add(new ActiveMove(selectedRow, selectedCol, row, col, selectedPiece, arrivalTime));
+            selectedRow = -1;
+            selectedCol = -1;
         }
     }
-
+}
     /**
      * מעדכן את שעון המשחק ומבצע מהלכים שהסתיימו בזמן שחלף.
      */
     private void executeWaitCommand(String line) {
-        String[] parts = line.split("\\s+");
-        if (parts.length >= 2) {
-            int ms = Integer.parseInt(parts[1]);
-            gameClock += ms;
+    String[] parts = line.split("\\s+");
+    if (parts.length >= 2) {
+        int ms = Integer.parseInt(parts[1]);
+        gameClock += ms;
 
-            Iterator<ActiveMove> iterator = ongoingMoves.iterator();
-            while (iterator.hasNext()) {
-                ActiveMove move = iterator.next();
-                if (gameClock >= move.arrivalTime) {
-                    board.setPiece(move.toRow, move.toCol, move.piece);
-                    board.clearCell(move.fromRow, move.fromCol);
-                    iterator.remove();
+        Iterator<ActiveMove> iterator = ongoingMoves.iterator();
+        while (iterator.hasNext()) {
+            ActiveMove move = iterator.next();
+        
+            if (gameClock >= move.arrivalTime) {
+                String capturedPiece = board.getPiece(move.toRow, move.toCol);
+
+                String pieceToPlace = isPawnPromotion(move) ? move.piece.charAt(0) + "Q" : move.piece;
+                board.setPiece(move.toRow, move.toCol, pieceToPlace);
+                board.clearCell(move.fromRow, move.fromCol);
+                iterator.remove();
+
+                if (isKing(capturedPiece)) {
+                    gameOver = true;
                 }
-            }
+                }
         }
     }
+}
+private boolean isPawnPromotion(ActiveMove move) {
+    if (move.piece.charAt(1) != 'P') return false;
+    int lastRow = (move.piece.charAt(0) == 'w') ? 0 : board.getRowsCount() - 1;
+    return move.toRow == lastRow;
+}
+
+private boolean isKing(String piece) {
+    return piece.length() == 2 && piece.charAt(1) == 'K';
+}
 
     /**
      * בודק האם המשבצת היעד כבר תפוסה על ידי כלי שנמצא בדרכו אליה.

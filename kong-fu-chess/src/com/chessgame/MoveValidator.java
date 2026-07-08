@@ -64,11 +64,22 @@ class MoveValidator {
 
     private boolean isValidPawnMove() {
         int direction = (pieceColor == 'w') ? -1 : 1;
-
+        // שורת ההתחלה של הרגלי: השורה הלפני-אחרונה מכל צד של הלוח.
+        int startRow = (pieceColor == 'w') ? board.getRowsCount() - 1 : 0;
+        // צעד אחד קדימה, למשבצת ריקה בלבד.
         if (deltaCol == 0 && toRow == fromRow + direction) {
             return board.getPiece(toRow, toCol).equals(".");
         }
 
+        // שני צעדים קדימה: מותר רק משורת ההתחלה, ורק אם גם המשבצת שעוברים
+        // דרכה וגם משבצת היעד ריקות.
+        if (deltaCol == 0 && fromRow == startRow && toRow == fromRow + 2 * direction) {
+            String passedSquare = board.getPiece(fromRow + direction, fromCol);
+            String targetSquare = board.getPiece(toRow, toCol);
+            return passedSquare.equals(".") && targetSquare.equals(".");
+        }
+
+        // אכילה באלכסון: צעד אחד קדימה וצעד אחד הצידה, לתא שיש בו כלי יריב.
         if (deltaCol == 1 && toRow == fromRow + direction) {
             String target = board.getPiece(toRow, toCol);
             return !target.equals(".") && target.charAt(0) != pieceColor;
