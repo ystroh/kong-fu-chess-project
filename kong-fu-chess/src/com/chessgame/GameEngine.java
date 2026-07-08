@@ -1,28 +1,49 @@
+package com.chessgame;
+
+import com.chessgame.board.Board;
+import com.chessgame.board.BoardParser;
+import com.chessgame.moves.ActiveMove;
+import com.chessgame.moves.JumpManager;
+import com.chessgame.moves.MoveArrivalProcessor;
+import com.chessgame.moves.MoveManager;
+import com.chessgame.moves.MoveValidator;
+import com.chessgame.pieces.Piece;
+import com.chessgame.rules.MoveContext;
+import com.chessgame.rules.MoveRuleRegistry;
+import com.chessgame.rules.standard.StandardChessRuleSet;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Iterator;
+
+/**
+ * GameEngine / מנוע המשחק
+ *
+ * תפקיד: מתאם דק בלבד. שימו לב לרשימת ה-import - זו בעצם "מפת
+ * התלויות" של המנוע: הוא תלוי בכל אחת מארבע החבילות (pieces, board,
+ * rules, moves), אבל אף אחת מהן לא תלויה בו בחזרה. זה בדיוק כיוון
+ * התלות הנכון - השורש (המתאם) תלוי בשכבות, השכבות לא תלויות בשורש.
+ */
 class GameEngine {
-    private final Board board;
-    private final List<ActiveMove> ongoingMoves = new ArrayList<>();
-    private final List<AirborneMove> airborneMoves = new ArrayList<>();
+    private final Board board = new Board();
+    private final BoardParser boardParser = new BoardParser();
+    private final MoveManager moveManager = new MoveManager();
+    private final JumpManager jumpManager = new JumpManager();
+    private final MoveRuleRegistry ruleRegistry = StandardChessRuleSet.build();
+    private final MoveValidator moveValidator = new MoveValidator(ruleRegistry);
+    private final MoveArrivalProcessor arrivalProcessor =
+            new MoveArrivalProcessor(board, moveManager, jumpManager, ruleRegistry);
 
     private int selectedRow = -1;
     private int selectedCol = -1;
     private long gameClock = 0;
     private GameState currentState = GameState.INIT;
-    private int expectedCols = -1;
     private boolean gameOver = false;
-    private static final String VALID_TOKEN_REGEX = "^(\\.|[wb][KQRBNP])$";
-    private static final long JUMP_DURATION_MS = 1000L;
 
-    public GameEngine() {
-        this.board = new Board();
-    }
-
-    public void start() {
+    /**
+     * נקודת ההתחלה של המנוע: קורא קלט מהמשתמש ומפעיל את הפקודות.
+     */
+    void start() {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(System.in))) {
             String line;
             while ((line = reader.readLine()) != null) {
@@ -33,6 +54,9 @@ class GameEngine {
         }
     }
 
+    /**
+     * מנתב את הקלט לפי המצב הנוכחי של המשחק (קליטת לוח או פקודות).
+     */
     private void processLine(String line) {
         if (line.isEmpty()) return;
 
@@ -51,23 +75,22 @@ class GameEngine {
         }
     }
 
+    /**
+     * מנתח שורה של הלוח. הולידציה עצמה בחבילת board (BoardParser) -
+     * כאן רק מתפסים את החריגה ומתרגמים אותה להתנהגות הידועה.
+     */
     private void handleBoardParsing(String line) {
-        String[] tokens = line.split("\\s+");
-        for (String token : tokens) {
-            if (!token.matches(VALID_TOKEN_REGEX)) {
-                System.out.println("ERROR UNKNOWN_TOKEN");
-                System.exit(0);
-            }
-        }
-        if (expectedCols == -1) {
-            expectedCols = tokens.length;
-        } else if (tokens.length != expectedCols) {
-            System.out.println("ERROR ROW_WIDTH_MISMATCH");
+        try {
+            board.addRow(boardParser.parseRow(line));
+        } catch (BoardParser.BoardParseException e) {
+            System.out.println("ERROR " + e.getMessage());
             System.exit(0);
         }
-        board.addRow(tokens);
     }
 
+    /**
+     * מנתב את הפקודות (click, wait, jump, print) לטיפול המתאים.
+     */
     private void handleCommandParsing(String line) {
         if (line.startsWith("click")) {
             if (gameOver) return;
@@ -83,247 +106,117 @@ class GameEngine {
         }
     }
 
-    private boolean isPathBlocked(int fromRow, int fromCol, int toRow, int toCol) {
-        int deltaRow = Math.abs(toRow - fromRow);
-        int deltaCol = Math.abs(toCol - fromCol);
-        boolean isStraightLine = deltaRow == 0 || deltaCol == 0 || deltaRow == deltaCol;
-        if (!isStraightLine) return false;
-
-        List<int[]> newPath = getPathCoordinates(fromRow, fromCol, toRow, toCol);
-
-        for (ActiveMove move : ongoingMoves) {
-            List<int[]> activePath = getPathCoordinates(move.fromRow, move.fromCol, move.toRow, move.toCol);
-
-            for (int[] p1 : newPath) {
-                for (int[] p2 : activePath) {
-                    if (p1[0] == p2[0] && p1[1] == p2[1]) {
-                        return true;
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
-    private List<int[]> getPathCoordinates(int r1, int c1, int r2, int c2) {
-        List<int[]> path = new ArrayList<>();
-        int dr = Integer.compare(r2, r1);
-        int dc = Integer.compare(c2, c1);
-
-        int currR = r1;
-        int currC = c1;
-
-        while (currR != r2 || currC != c2) {
-            path.add(new int[]{currR, currC});
-            currR += dr;
-            currC += dc;
-        }
-        path.add(new int[]{r2, c2});
-        return path;
-    }
-
-    private boolean isPieceMoving(int row, int col) {
-        for (ActiveMove move : ongoingMoves) {
-            if (move.fromRow == row && move.fromCol == col) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * בודק האם הכלי במשבצת מסוימת נמצא כרגע באוויר (מבצע קפיצה).
-     */
-    private boolean isPieceAirborne(int row, int col) {
-        for (AirborneMove jump : airborneMoves) {
-            if (jump.row == row && jump.col == col) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // ------------------------------------------------------------------
+    // click
+    // ------------------------------------------------------------------
 
     private void executeClickCommand(String line) {
-        String[] parts = line.split("\\s+");
-        if (parts.length < 3) return;
+        CommandParser.parseCellCommand(line, board).ifPresent(cell -> handleClick(cell.row, cell.col));
+    }
 
-        int x = Integer.parseInt(parts[1]);
-        int y = Integer.parseInt(parts[2]);
+    private void handleClick(int row, int col) {
+        Piece clickedPiece = board.getPiece(row, col);
 
-        if (x < 0 || y < 0) return;
-
-        int col = x / 100;
-        int row = y / 100;
-
-        if (!board.isValidCell(row, col)) return;
-
-        String clickedPiece = board.getPiece(row, col);
-
-        if (selectedRow == -1 && selectedCol == -1) {
-            if (!clickedPiece.equals(".")) {
-                if (isPieceMoving(row, col) || isPieceAirborne(row, col)) return;
-                selectedRow = row;
-                selectedCol = col;
-            }
+        if (selectedRow == -1) {
+            trySelectPiece(row, col, clickedPiece);
         } else {
-            if (isPieceMoving(row, col)) return;
-
-            String selectedPiece = board.getPiece(selectedRow, selectedCol);
-
-            if (!clickedPiece.equals(".") && isFriendly(selectedPiece, clickedPiece)) {
-                if (isPieceAirborne(row, col)) return;
-                selectedRow = row;
-                selectedCol = col;
-            } else {
-                MoveValidator validator = new MoveValidator(board, selectedPiece, selectedRow, selectedCol, row, col);
-
-                if (!validator.isValid()) {
-                    selectedRow = -1;
-                    selectedCol = -1;
-                    return;
-                }
-
-                if (isPathBlocked(selectedRow, selectedCol, row, col)) {
-                    selectedRow = -1;
-                    selectedCol = -1;
-                    return;
-                }
-
-                if (isSquareReserved(row, col)) {
-                    selectedRow = -1;
-                    selectedCol = -1;
-                    return;
-                }
-
-                int distance = Math.max(Math.abs(row - selectedRow), Math.abs(col - selectedCol));
-                long moveDuration = distance * 1000L;
-                long arrivalTime = gameClock + moveDuration;
-
-                ongoingMoves.add(new ActiveMove(selectedRow, selectedCol, row, col, selectedPiece, arrivalTime));
-                selectedRow = -1;
-                selectedCol = -1;
-            }
+            handleClickWithSelection(row, col, clickedPiece);
         }
     }
 
-    /**
-     * מטפל בפקודת jump - כלי קופץ באוויר למשך 1000 מילישניות ונשאר במקומו
-     * הלוגי. כלי בתנועה, כלי שכבר באוויר, או משבצת ריקה - לא יכולים לקפוץ.
-     */
+    private void trySelectPiece(int row, int col, Piece clickedPiece) {
+        if (clickedPiece.isEmpty()) return;
+        if (moveManager.isPieceMoving(row, col) || jumpManager.isPieceAirborne(row, col)) return;
+
+        selectedRow = row;
+        selectedCol = col;
+    }
+
+    private void handleClickWithSelection(int row, int col, Piece clickedPiece) {
+        if (moveManager.isPieceMoving(row, col)) return;
+
+        Piece selectedPiece = board.getPiece(selectedRow, selectedCol);
+
+        if (!clickedPiece.isEmpty() && selectedPiece.isFriendlyTo(clickedPiece)) {
+            reselect(row, col);
+        } else {
+            attemptMove(row, col, selectedPiece);
+        }
+    }
+
+    private void reselect(int row, int col) {
+        if (jumpManager.isPieceAirborne(row, col)) return;
+        selectedRow = row;
+        selectedCol = col;
+    }
+
+    private void attemptMove(int toRow, int toCol, Piece selectedPiece) {
+        MoveContext ctx = new MoveContext(board, selectedPiece, selectedRow, selectedCol, toRow, toCol);
+
+        boolean valid = moveValidator.isValid(ctx)
+                && !moveManager.isPathBlocked(selectedRow, selectedCol, toRow, toCol)
+                && !moveManager.isSquareReserved(toRow, toCol);
+
+        if (valid) {
+            startMove(toRow, toCol, selectedPiece);
+        }
+        clearSelection();
+    }
+
+    private void startMove(int toRow, int toCol, Piece piece) {
+        int distance = Math.max(Math.abs(toRow - selectedRow), Math.abs(toCol - selectedCol));
+        long moveDuration = distance * 1000L;
+        long arrivalTime = gameClock + moveDuration;
+
+        moveManager.startMove(new ActiveMove(selectedRow, selectedCol, toRow, toCol, piece, arrivalTime));
+    }
+
+    private void clearSelection() {
+        selectedRow = -1;
+        selectedCol = -1;
+    }
+
+    // ------------------------------------------------------------------
+    // jump
+    // ------------------------------------------------------------------
+
     private void executeJumpCommand(String line) {
-        String[] parts = line.split("\\s+");
-        if (parts.length < 3) return;
+        CommandParser.parseCellCommand(line, board).ifPresent(cell -> handleJump(cell.row, cell.col));
+    }
 
-        int x = Integer.parseInt(parts[1]);
-        int y = Integer.parseInt(parts[2]);
-
-        if (x < 0 || y < 0) return;
-
-        int col = x / 100;
-        int row = y / 100;
-
-        if (!board.isValidCell(row, col)) return;
-
-        String piece = board.getPiece(row, col);
-        if (piece.equals(".")) return;
-
-        if (isPieceMoving(row, col)) return;
-        if (isPieceAirborne(row, col)) return;
+    private void handleJump(int row, int col) {
+        Piece piece = board.getPiece(row, col);
+        if (piece.isEmpty()) return;
+        if (moveManager.isPieceMoving(row, col)) return;
+        if (jumpManager.isPieceAirborne(row, col)) return;
 
         if (selectedRow == row && selectedCol == col) {
-            selectedRow = -1;
-            selectedCol = -1;
+            clearSelection();
         }
 
-        airborneMoves.add(new AirborneMove(row, col, piece, gameClock + JUMP_DURATION_MS));
+        jumpManager.startJump(row, col, piece, gameClock);
     }
 
-    /**
-     * מעדכן את שעון המשחק, מבצע מהלכים שהסתיימו, ומטפל בלכידות של כלים
-     * מרחפים (jump) שאויב "הגיע" אליהם בזמן שהם עדיין היו באוויר.
-     */
+    // ------------------------------------------------------------------
+    // wait
+    // ------------------------------------------------------------------
+
     private void executeWaitCommand(String line) {
         String[] parts = line.split("\\s+");
-        if (parts.length >= 2) {
-            int ms = Integer.parseInt(parts[1]);
-            gameClock += ms;
+        if (parts.length < 2) return;
 
-            Iterator<ActiveMove> iterator = ongoingMoves.iterator();
-            while (iterator.hasNext()) {
-                ActiveMove move = iterator.next();
-
-                if (gameClock >= move.arrivalTime) {
-                    AirborneMove airborneDefender = findAirborneCapturing(move);
-
-                    if (airborneDefender != null) {
-                        // הכלי המרחף לוכד את הכלי המגיע - הוא לא נוחת, ומוסר מהלוח.
-                        board.clearCell(move.fromRow, move.fromCol);
-                        airborneMoves.remove(airborneDefender);
-                        iterator.remove();
-                        continue;
-                    }
-
-                    String capturedPiece = board.getPiece(move.toRow, move.toCol);
-
-                    String pieceToPlace = isPawnPromotion(move) ? move.piece.charAt(0) + "Q" : move.piece;
-                    board.setPiece(move.toRow, move.toCol, pieceToPlace);
-                    board.clearCell(move.fromRow, move.fromCol);
-                    iterator.remove();
-
-                    if (isKing(capturedPiece)) {
-                        gameOver = true;
-                    }
-                }
-            }
-
-            Iterator<AirborneMove> jumpIterator = airborneMoves.iterator();
-            while (jumpIterator.hasNext()) {
-                AirborneMove jump = jumpIterator.next();
-                if (gameClock >= jump.landTime) {
-                    // הקפיצה הסתיימה בלי שנחת עליה אויב - הכלי פשוט נוחת במקומו.
-                    jumpIterator.remove();
-                }
-            }
+        int ms;
+        try {
+            ms = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            return;
         }
-    }
 
-    /**
-     * מאתר כלי מרחף עוין שנמצא במשבצת היעד של המהלך הנתון, ושהיה עדיין
-     * באוויר ברגע הגעת המהלך (jump.landTime >= move.arrivalTime) - כלומר
-     * יש ללכוד את הכלי המגיע במקום לתת לו לנחות כרגיל.
-     */
-    private AirborneMove findAirborneCapturing(ActiveMove move) {
-        for (AirborneMove jump : airborneMoves) {
-            if (jump.row == move.toRow && jump.col == move.toCol
-                    && jump.landTime >= move.arrivalTime
-                    && !isFriendly(jump.piece, move.piece)) {
-                return jump;
-            }
+        gameClock += ms;
+
+        if (arrivalProcessor.processArrivals(gameClock)) {
+            gameOver = true;
         }
-        return null;
-    }
-
-    private boolean isPawnPromotion(ActiveMove move) {
-        if (move.piece.charAt(1) != 'P') return false;
-        int lastRow = (move.piece.charAt(0) == 'w') ? 0 : board.getRowsCount() - 1;
-        return move.toRow == lastRow;
-    }
-
-    private boolean isKing(String piece) {
-        return piece.length() == 2 && piece.charAt(1) == 'K';
-    }
-
-    private boolean isSquareReserved(int row, int col) {
-        for (ActiveMove move : ongoingMoves) {
-            if (move.toRow == row && move.toCol == col) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean isFriendly(String piece1, String piece2) {
-        if (piece1.isEmpty() || piece2.isEmpty()) return false;
-        return piece1.charAt(0) == piece2.charAt(0);
+        jumpManager.landExpiredJumps(gameClock);
     }
 }
