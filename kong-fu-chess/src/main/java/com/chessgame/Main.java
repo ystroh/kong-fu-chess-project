@@ -7,7 +7,7 @@ package com.chessgame;
  */
 public class Main {
     public static void main(String[] args) {
-        GameEngine engine = new GameEngine();
-        engine.start();
+//        GameEngine engine = new GameEngine();
+//        engine.start();
     }
 }
