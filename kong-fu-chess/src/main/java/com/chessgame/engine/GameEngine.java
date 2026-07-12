@@ -8,26 +8,6 @@ import com.chessgame.rules.MoveValidation;
 import com.chessgame.rules.RuleEngine;
 import com.chessgame.realtime.RealTimeArbiter;
 
-/**
- * GameEngine / מנוע המשחק
- *
- * תפקיד: מתאם שירות-אפליקציה - גבול-הפקודה הציבורי היחיד שדרכו
- * Controller ו-TextTestRunner מדברים עם המערכת. שלוש פקודות
- * ציבוריות: requestMove (מהמסמך), wait (מהמסמך), requestJump
- * (תוספת שלנו, לפי אותו תבנית בדיוק).
- *
- * GameEngine לא מכיל שום לוגיקת-תנועה ספציפית-לכלי, מיפוי פיקסלים,
- * רינדור, פרסינג טקסט, או לוגיקת test-runner - הוא רק מתאם קריאות
- * בין RuleEngine (חוקיות שחמט) ל-RealTimeArbiter (מכניקת זמן-אמת),
- * ומחזיק את GameState (game_over).
- *
- * סדר הבדיקות ב-requestMove, בהתאם למסמך: game_over -> "עסוק כבר"
- * -> RuleEngine.validateMove -> בדיקת-התנגשות נוספת -> התחלת תנועה.
- * "עסוק" ו"התנגשות" הם המקבילה שלנו ל-motion_in_progress - לא "יש
- * תנועה כלשהי במערכת" (מדיניות המסמך המקורית), אלא "הכלי הזה עסוק"
- * או "המסלול/היעד מתנגש עם תנועה קיימת" - כך אפשר כמה תנועות
- * בו-זמנית בלי לוותר על ההגנה מפני בקשות סותרות.
- */
 public final class GameEngine {
     private final Board board;
     private final GameState gameState;
@@ -41,38 +21,33 @@ public final class GameEngine {
         this.realTimeArbiter = realTimeArbiter;
     }
 
-    public MoveResult requestMove(Position source, Position destination) {
+    public com.chessgame.engine.MoveResult requestMove(Position source, Position destination) {
         if (gameState.isGameOver()) {
-            return MoveResult.rejected(MoveReason.GAME_OVER);
-        }
-        if (realTimeArbiter.isPieceBusy(source)) {
-            return MoveResult.rejected(MoveReason.MOTION_IN_PROGRESS);
-        }
-
-        MoveValidation validation = ruleEngine.validateMove(source, destination);
-        if (!validation.isValid()) {
-            return MoveResult.rejected(validation.reason());
+            return com.chessgame.engine.MoveResult.rejected(MoveReason.GAME_OVER);
         }
 
         if (!realTimeArbiter.canStartMotion(source, destination)) {
             return MoveResult.rejected(MoveReason.MOTION_IN_PROGRESS);
         }
 
+        MoveValidation legality = ruleEngine.validateMove(source, destination);
+        if (!legality.isValid()) {
+            return MoveResult.rejected(legality.reason());
+        }
+
         realTimeArbiter.startMotion(source, destination);
         return MoveResult.accepted();
     }
 
-    /**
-     * מבקש קפיצה עבור הכלי בתא הנתון (תוספת שלנו - אין חוק-שחמט
-     * לבדוק, רק שהכלי קיים והוא לא כבר עסוק).
-     */
     public MoveResult requestJump(Position position) {
         if (gameState.isGameOver()) {
             return MoveResult.rejected(MoveReason.GAME_OVER);
         }
-        if (realTimeArbiter.isPieceBusy(position)) {
+
+        if (!realTimeArbiter.canStartJump(position)) {
             return MoveResult.rejected(MoveReason.MOTION_IN_PROGRESS);
         }
+
         if (board.pieceAt(position) == null) {
             return MoveResult.rejected(MoveReason.EMPTY_SOURCE);
         }
