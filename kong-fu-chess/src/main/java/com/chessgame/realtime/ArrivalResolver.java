@@ -25,10 +25,32 @@ public final class ArrivalResolver {
         board.movePiece(motion.source(), motion.destination());
         motion.piece().setState(Piece.State.IDLE);
 
+        promoteIfEligible(motion);
+
         if (capturedPiece != null) {
             capturedPiece.setState(Piece.State.CAPTURED);
             return capturedPiece.kind() == Piece.Kind.KING;
         }
         return false;
+    }
+
+    /**
+     * הכתרה: רגלי שהגיע לשורה-האחרונה עבור הצבע שלו הופך למלכה - אבל
+     * *רק* אם הגיע בצעד-בודד (קדימה או לכידה-אלכסונית), לא ב-double-step.
+     * בשחמט אמיתי double-step אף פעם לא מגיע לשורה-האחרונה (הלוח גדול
+     * מספיק) - אבל בלוחות-בדיקה קטנים זה יכול לקרות "במקרה", וזה לא
+     * אמור להיחשב הכתרה.
+     */
+    private void promoteIfEligible(Motion motion) {
+        Piece piece = motion.piece();
+        if (piece.kind() != Piece.Kind.PAWN) return;
+
+        boolean singleStep = Math.abs(motion.source().row() - motion.destination().row()) == 1;
+        if (!singleStep) return;
+
+        int backRank = (piece.color() == Piece.Color.WHITE) ? 0 : board.height() - 1;
+        if (piece.cell().row() == backRank) {
+            piece.promoteToQueen();
+        }
     }
 }

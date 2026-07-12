@@ -3,11 +3,10 @@ package com.chessgame;
 /**
  * Main / ראשי
  *
- * תפקיד: נקודת הכניסה לתוכנית.
+ * תפקיד: נקודת הכניסה לתוכנית - בונה App ומריץ אותה.
  */
 public class Main {
     public static void main(String[] args) {
-//        GameEngine engine = new GameEngine();
-//        engine.start();
+        new App().run();
     }
 }

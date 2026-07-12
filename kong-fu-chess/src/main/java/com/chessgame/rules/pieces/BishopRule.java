@@ -3,7 +3,6 @@ package com.chessgame.rules.pieces;
 import com.chessgame.model.Board;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
-import com.chessgame.rules.pieces.SlidingMovement;
 
 import java.util.HashSet;
 import java.util.Set;

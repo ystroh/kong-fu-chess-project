@@ -34,7 +34,7 @@ public final class Piece {
 
     private final String id;
     private final Color color;
-    private final Kind kind;
+    private Kind kind;
     private Position cell;
     private State state;
 
@@ -81,6 +81,17 @@ public final class Piece {
      */
     public void setState(State state) {
         this.state = state;
+    }
+
+    /**
+     * הופך רגלי למלכה. נקרא רק על ידי ArrivalResolver, ורק כשהרגלי
+     * מגיע לשורה-האחרונה עבור הצבע שלו (הכתרה). שומרים על אותו
+     * אובייקט-כלי בדיוק (לא יוצרים כלי חדש) - כי Motion כבר מחזיק
+     * רפרנס ישיר לכלי הזה, ואנחנו לא רוצים "לנתק" את הרפרנס הזה
+     * באמצע resolve של הגעה.
+     */
+    public void promoteToQueen() {
+        this.kind = Kind.QUEEN;
     }
 
     public boolean isSameColorAs(Piece other) {
