@@ -9,17 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * JumpAwareArrivalResolver / מעבד-הגעות מודע-קפיצה
- *
- * תפקיד: "השכבה המחברת" בין המסלול המשותף (ArrivalResolver הטהור,
- * שלא יודע כלום על קפיצות) לבין תוספת הקפיצה שלנו. זהו Decorator:
- * עוטף את ArrivalResolver בלי לגעת בו כלל. תחילה מסננת מהרשימה
- * כל תנועה שנלכדה על ידי כלי מרחף (מטפלת בזה בעצמה, כאן, בחבילת
- * airborne בלבד), ומעבירה את שאר התנועות (שלא קשורות לקפיצה בכלל)
- * ל-ArrivalResolver הטהור, בדיוק כמו שהיה עובד בלי הפיצ'ר הזה
- * בכלל.
- */
 public final class JumpAwareArrivalResolver {
     private final Board board;
     private final ArrivalResolver commonRouteResolver;

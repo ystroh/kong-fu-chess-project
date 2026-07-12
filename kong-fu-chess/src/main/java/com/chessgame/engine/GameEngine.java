@@ -7,7 +7,10 @@ import com.chessgame.rules.MoveReason;
 import com.chessgame.rules.MoveValidation;
 import com.chessgame.rules.RuleEngine;
 import com.chessgame.realtime.RealTimeArbiter;
+import com.chessgame.model.Piece;
 
+import java.util.ArrayList;
+import java.util.List;
 public final class GameEngine {
     private final Board board;
     private final GameState gameState;
@@ -62,8 +65,17 @@ public final class GameEngine {
             gameState.setGameOver(true);
         }
     }
-
-    public GameSnapshot snapshot() {
-        return new GameSnapshot(board, gameState.isGameOver());
+    public GameSnapshot snapshot(Position selectedCell) {
+        List<GameSnapshot.PieceView> pieces = new ArrayList<>();
+        for (int row = 0; row < board.height(); row++) {
+            for (int col = 0; col < board.width(); col++) {
+                Piece piece = board.pieceAt(new Position(row, col));
+                if (piece != null) {
+                    pieces.add(new GameSnapshot.PieceView(
+                            piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state()));
+                }
+            }
+        }
+        return new GameSnapshot(board.width(), board.height(), pieces, selectedCell, gameState.isGameOver());
     }
 }

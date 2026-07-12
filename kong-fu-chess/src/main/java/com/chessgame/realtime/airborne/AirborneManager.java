@@ -3,17 +3,10 @@ package com.chessgame.realtime.airborne;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 import com.chessgame.realtime.motion.Motion;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * AirborneManager / מנהל-קפיצות
- *
- * תפקיד: "בעלים" בלעדי של רשימת הכלים המרחפים (List<AirborneMotion>).
- * מקביל מדויק ל-JumpManager מהפרויקט הקודם.
- */
 public final class AirborneManager {
     private final List<AirborneMotion> activeAirborne = new ArrayList<>();
 

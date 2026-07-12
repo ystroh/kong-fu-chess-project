@@ -7,20 +7,6 @@ import com.chessgame.realtime.airborne.AirborneManager;
 import com.chessgame.realtime.airborne.JumpAwareArrivalResolver;
 import com.chessgame.realtime.motion.MotionManager;
 
-/**
- * RealTimeArbiter / בורר-זמן-אמת
- *
- * תפקיד: הבעלים היחיד של מידע-הזמן-אמת (תנועות פעילות + כלים
- * מרחפים) - וממילא גם היחיד שיכול לענות שאלות עליו, בדיוק כמו
- * ש-Board הוא גם בעלים וגם עונה isInBounds/pieceAt על עצמו.
- *
- * canStartMotion/canStartJump מחזירים boolean פשוט, לא "פסק-דין"
- * מנומק - כי אף צרכן (GameEngine) לא צריך לדעת *איזו* מ-4 הסיבות
- * גרמה לדחייה: כלפי חוץ יש תמיד סיבה אחת בלבד (motion_in_progress),
- * כפי שהמסמך דורש. ניסינו בעבר לבנות verdict object מלא (MotionReason
- * + MotionValidation + MotionValidator) - זה עבד, אבל היה סרבול
- * מיותר: אף אחד לא צרך את המידע העשיר. הוסר בחזרה לגרסה הפשוטה.
- */
 public final class RealTimeArbiter {
     private static final int CELL_DURATION_MS = 1000;
     private static final int JUMP_DURATION_MS = 1000;

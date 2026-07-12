@@ -7,14 +7,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * MotionManager / מנהל-תנועות
- *
- * תפקיד: "בעלים" בלעדי של רשימת התנועות הפעילות (List<Motion>).
- * מקביל מדויק ל-MoveManager מהפרויקט הקודם - אותה חלוקת אחריות
- * בדיוק (isPieceMoving, isPathBlocked, isSquareReserved, startMove,
- * collectArrived), רק בשמות מותאמים לפרויקט הזה.
- */
 public final class MotionManager {
     private final List<Motion> activeMotions = new ArrayList<>();
 
