@@ -26,6 +26,18 @@ public final class RuleEngine {
         this.pieceRules = pieceRules;
     }
 
+    /**
+     * מותר מהלכים "לא-חוקיים" מסוימים (כמו מעבר-דרך-כלים) - לפי הכלל:
+     * "you may be able to move those pieces out of the way in time, or
+     * the enemy might move their pieces before you get there". לכן
+     * FRIENDLY_DESTINATION *לא* בודק חסימת-מסלול-באמצע (זו כבר לא
+     * נבדקת כלל ב-SlidingMovement) - היא בודקת רק את התא-הסופי.
+     *
+     * חריגה לפרש: "if the knight lands on an occupied spot, that piece
+     * must be killed. This is the only way you can kill your own
+     * pieces" - כלומר לפרש *מותר* לטרגט גם תא-סופי-תפוס-בידיד (זה
+     * ייפתר כלכידה-רגילה ב-ArrivalResolver, בלי שינוי שם).
+     */
     public MoveValidation validateMove(Position source, Position destination) {
         if (!board.isInBounds(source) || !board.isInBounds(destination)) {
             return MoveValidation.invalid(MoveReason.OUTSIDE_BOARD);
@@ -36,9 +48,11 @@ public final class RuleEngine {
             return MoveValidation.invalid(MoveReason.EMPTY_SOURCE);
         }
 
-        Piece destinationOccupant = board.pieceAt(destination);
-        if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
-            return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
+        if (movingPiece.kind() != Piece.Kind.KNIGHT) {
+            Piece destinationOccupant = board.pieceAt(destination);
+            if (destinationOccupant != null && destinationOccupant.isSameColorAs(movingPiece)) {
+                return MoveValidation.invalid(MoveReason.FRIENDLY_DESTINATION);
+            }
         }
 
         Set<Position> legalDestinations = pieceRules.legalDestinations(board, movingPiece);

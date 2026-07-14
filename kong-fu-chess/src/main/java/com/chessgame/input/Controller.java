@@ -12,13 +12,18 @@ import java.util.Optional;
  * Controller / קונטרולר
  *
  * תפקיד: מתרגם קליקים לפקודות-משחק. תלוי *רק* ב-BoardMapper וב-
- * GameEngine - בדיוק כמו שהמסמך קובע במפורש ("Controller depends on
- * BoardMapper and GameEngine"). Board *לא* מופיע ברשימת-התלויות שם -
- * ובכוונה: כדי לדעת "האם יש כלי בתא הזה" (קליק ראשון) או "מה
- * הצבע שלו" (בחירה-מחדש), הקונטרולר שואל את ה-GameSnapshot (דרך
- * gameEngine.snapshot(...)) - לא את ה-Board ישירות. זה מונע ממנו
- * לגמרי אפשרות "לגלוש" ולקרוא ל-Board.movePiece בטעות, כי אין לו
- * בכלל רפרנס ל-Board.
+ * GameEngine - בדיוק כמו שהמסמך קובע במפורש. Board *לא* מופיע
+ * ברשימת-התלויות - כדי לדעת "האם יש כלי בתא" (קליק ראשון), הקונטרולר
+ * שואל את ה-GameSnapshot דרך gameEngine.snapshot(...), לא Board.
+ *
+ * שינוי חשוב: הוסרה לגמרי לוגיקת "בחירה-מחדש-כשהיעד-ידידותי"
+ * (isFriendlyReselect). המסמך קובע במפורש: "On second click, call
+ * GameEngine.request_move... Clear selection after every second
+ * in-board click, whether the move is legal or illegal" - קליק שני
+ * *תמיד* שולח request_move, בלי-תנאי; RuleEngine (לא Controller)
+ * מחליט אם זה חוקי. זה גם פותר בעיה אמיתית: פרש שמותר-לו לטרגט
+ * ידיד (KnightRule) היה בעבר בלתי-נגיש דרך קליקים בכלל, כי
+ * isFriendlyReselect "יירט" את הקליק לפני ש-request_move נשלח.
  */
 public final class Controller {
     private final BoardMapper boardMapper;
@@ -67,22 +72,9 @@ public final class Controller {
     }
 
     private ControllerResult handleSecondClick(Position cell) {
-        if (isFriendlyReselect(cell)) {
-            selected = cell;
-            return ControllerResult.noMove();
-        }
-
         MoveResult result = gameEngine.requestMove(selected, cell);
         selected = null;
         return ControllerResult.moveRequested(result);
-    }
-
-    private boolean isFriendlyReselect(Position cell) {
-        Optional<Piece.Color> clickedColor = pieceColorAt(cell);
-        if (clickedColor.isEmpty()) return false;
-
-        Optional<Piece.Color> selectedColor = pieceColorAt(selected);
-        return selectedColor.isPresent() && selectedColor.get() == clickedColor.get();
     }
 
     /** שואל את ה-GameSnapshot (לא את Board) האם יש כלי בתא, ומה צבעו. */

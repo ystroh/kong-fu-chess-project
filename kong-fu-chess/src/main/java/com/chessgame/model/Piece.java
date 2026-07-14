@@ -29,8 +29,9 @@ public final class Piece {
     }
 
     public enum State {
-        IDLE, MOVING, AIRBORNE, CAPTURED
+        IDLE, MOVING, AIRBORNE, COOLDOWN, CAPTURED
     }
+
 
     private final String id;
     private final Color color;

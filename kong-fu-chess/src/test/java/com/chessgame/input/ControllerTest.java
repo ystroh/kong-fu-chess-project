@@ -64,18 +64,39 @@ class ControllerTest {
     }
 
     @Test
-    void secondClickOnFriendlyPiece_reselectsInsteadOfMoving() {
-        controller.click(50, 50); // wK
-        // אין כלי לבן שני בלוח הזה - נוסיף תרחיש עם שני כלים לבנים
+    void secondClickOnFriendlyPiece_sendsRequestMove_notReselect() {
+        // שינוי-כלל: קליק-שני *תמיד* שולח request_move, גם על-כלי-
+        // ידידותי - בדיוק כמו שהמסמך קובע ("whether the move is
+        // legal or illegal"). RuleEngine (לא Controller) מחליט.
         board = new BoardParser().parse("wK wR .\n. . .\n. . .");
         GameState gameState = new GameState();
         GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
         controller = new Controller(new BoardMapper(board), engine);
 
         controller.click(50, 50);              // בוחר wK
-        ControllerResult result = controller.click(150, 50);  // wR - ידידותי, בחירה-מחדש
+        ControllerResult result = controller.click(150, 50);  // wR - ידידותי
 
-        assertFalse(result.requestedMove()); // לא נשלח מהלך - רק הוחלפה הבחירה
+        assertTrue(result.requestedMove()); // עכשיו *כן* נשלח מהלך
+        assertFalse(result.moveResult().isAccepted()); // ונדחה - מלך לא-יכול-לאכול-ידיד
+        assertEquals(com.chessgame.rules.MoveReason.FRIENDLY_DESTINATION, result.moveResult().reason());
+    }
+
+    @Test
+    void knightCanCaptureFriendlyPieceThroughController() {
+        // בדיוק הבאג שתוקן: לפני התיקון, קליק-שני-על-ידיד תמיד
+        // "נבחר-מחדש" - גם לפרש, שמותר-לו-לטרגט-ידיד. עכשיו זה
+        // נגיש דרך Controller, לא רק דרך GameEngine ישירות.
+        board = new BoardParser().parse(". . .\n. . wP\n. . .");
+        board.addPiece(new com.chessgame.model.Piece("n", com.chessgame.model.Piece.Color.WHITE, com.chessgame.model.Piece.Kind.KNIGHT, new com.chessgame.model.Position(0, 0)));
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
+        controller = new Controller(new BoardMapper(board), engine);
+
+        controller.click(50, 50);                     // בוחר פרש ב-(0,0)
+        ControllerResult result = controller.click(250, 150); // wP ב-(1,2) - ידידותי
+
+        assertTrue(result.requestedMove());
+        assertTrue(result.moveResult().isAccepted()); // הפרש *כן* יכול לטרגט את הידיד
     }
 
     @Test
