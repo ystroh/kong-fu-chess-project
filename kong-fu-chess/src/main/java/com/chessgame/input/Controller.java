@@ -35,6 +35,17 @@ public final class Controller {
         this.gameEngine = gameEngine;
     }
 
+    public Position selectedCell() { return selected; }
+
+    /**
+     * מעביר את גודל-המשבצת העדכני ל-BoardMapper הפנימי, בלי לחשוף
+     * אותו עצמו החוצה. יש לקרוא לזה מ-GameWindow, לפני כל click(),
+     * עם ה-cellSize שחושב הרגע מגודל-הפאנל הנוכחי.
+     */
+    public void setCellSizePx(int cellSizePx) {
+        boardMapper.setCellSizePx(cellSizePx);
+    }
+
     public ControllerResult click(int x, int y) {
         Position cell = boardMapper.pixelToCell(x, y);
 

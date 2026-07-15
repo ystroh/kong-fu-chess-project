@@ -14,13 +14,15 @@ public final class GameSnapshot {
     private final List<PieceView> pieces;
     private final Position selectedCell;
     private final boolean gameOver;
+    private final Piece.Color winner;
 
-    public GameSnapshot(int width, int height, List<PieceView> pieces, Position selectedCell, boolean gameOver) {
+    public GameSnapshot(int width, int height, List<PieceView> pieces, Position selectedCell, boolean gameOver, Piece.Color winner) {
         this.width = width;
         this.height = height;
         this.pieces = Collections.unmodifiableList(pieces);
         this.selectedCell = selectedCell;
         this.gameOver = gameOver;
+        this.winner = winner;
     }
 
     public int width() { return width; }
@@ -28,7 +30,7 @@ public final class GameSnapshot {
     public List<PieceView> pieces() { return pieces; }
     public Position selectedCell() { return selectedCell; }
     public boolean isGameOver() { return gameOver; }
-
+    public Piece.Color winner() { return winner; }
     public static final class PieceView {
         private final String id;
         private final Piece.Color color;

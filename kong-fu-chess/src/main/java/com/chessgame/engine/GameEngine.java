@@ -65,17 +65,40 @@ public final class GameEngine {
             gameState.setGameOver(true);
         }
     }
+
     public GameSnapshot snapshot(Position selectedCell) {
         List<GameSnapshot.PieceView> pieces = new ArrayList<>();
+        boolean whiteKingAlive = false;
+        boolean blackKingAlive = false;
+
         for (int row = 0; row < board.height(); row++) {
             for (int col = 0; col < board.width(); col++) {
                 Piece piece = board.pieceAt(new Position(row, col));
-                if (piece != null) {
-                    pieces.add(new GameSnapshot.PieceView(
-                            piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state()));
+                if (piece == null) {
+                    continue;
+                }
+                pieces.add(new GameSnapshot.PieceView(
+                        piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state()));
+
+                if (piece.kind() == Piece.Kind.KING) {
+                    if (piece.color() == Piece.Color.WHITE) {
+                        whiteKingAlive = true;
+                    } else if (piece.color() == Piece.Color.BLACK) {
+                        blackKingAlive = true;
+                    }
                 }
             }
         }
-        return new GameSnapshot(board.width(), board.height(), pieces, selectedCell, gameState.isGameOver());
+        Piece.Color winner = null;
+        boolean isGameOver = gameState.isGameOver();
+        if (isGameOver) {
+            if (whiteKingAlive && !blackKingAlive) {
+                winner = Piece.Color.WHITE;
+            } else if (blackKingAlive && !whiteKingAlive) {
+                winner = Piece.Color.BLACK;
+            }
+        }
+
+        return new GameSnapshot(board.width(), board.height(), pieces, selectedCell, isGameOver, winner);
     }
 }
