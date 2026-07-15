@@ -27,13 +27,12 @@ import java.util.List;
 public final class RealTimeArbiter {
     private static final int CELL_DURATION_MS = 1000;
     private static final int JUMP_DURATION_MS = 1000;
-    private static final int COOLDOWN_DURATION_MS = 1000;
 
     private final Board board;
     private final MotionManager motionManager = new MotionManager();
     private final AirborneManager airborneManager = new AirborneManager();
     private final CollisionManager collisionManager;
-    private final CooldownManager cooldownManager = new CooldownManager(COOLDOWN_DURATION_MS);
+    private final CooldownManager cooldownManager = new CooldownManager();
     private final ArrivalResolver commonRouteResolver;
     private final JumpAwareArrivalResolver arrivalResolver;
     private long gameClock = 0;
@@ -56,6 +55,21 @@ public final class RealTimeArbiter {
         if (airborneManager.isPieceAirborne(source)) return false;
         if (cooldownManager.isPieceCoolingDown(source)) return false;
         return true;
+    }
+
+    /** שעון-המשחק הנוכחי (לא זמן-אמיתי!) - הבסיס שממנו נמדדים startTime/arrivalTime של כל Motion. */
+    public long gameClock() {
+        return gameClock;
+    }
+
+    /** ה-Motion הפעיל של הכלי בתא הנתון (אם הוא באמצע תנועה/קפיצה), או null. */
+    public Motion motionOf(Position source) {
+        return motionManager.motionOf(source);
+    }
+
+    /** חלון-הזמן של הקירור-הפעיל בתא הנתון (אם יש), או null. */
+    public CooldownManager.CooldownWindow cooldownOf(Position position) {
+        return cooldownManager.cooldownOf(position);
     }
 
     /** האם מותר להתחיל קפיצה מהתא הנתון עכשיו. */
@@ -96,11 +110,17 @@ public final class RealTimeArbiter {
 
         for (Motion motion : arrived) {
             if (motion.piece().state() == Piece.State.IDLE) {
-                cooldownManager.startCooldown(motion.piece(), gameClock);
+                cooldownManager.startLongCooldown(motion.piece(), gameClock);
             }
         }
 
-        airborneManager.landExpiredJumps(gameClock);
+        List<Piece> landedJumps = airborneManager.landExpiredJumps(gameClock);
+        for (Piece piece : landedJumps) {
+            if (piece.state() == Piece.State.IDLE) {
+                cooldownManager.startShortCooldown(piece, gameClock);
+            }
+        }
+
         cooldownManager.clearExpiredCooldowns(gameClock);
 
         return kingCapturedByCollision || kingCapturedByArrival;

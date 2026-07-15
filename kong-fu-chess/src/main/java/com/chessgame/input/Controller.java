@@ -2,7 +2,6 @@ package com.chessgame.input;
 
 import com.chessgame.engine.GameEngine;
 import com.chessgame.engine.GameSnapshot;
-import com.chessgame.engine.MoveResult;
 import com.chessgame.model.Piece;
 import com.chessgame.model.Position;
 
@@ -82,10 +81,19 @@ public final class Controller {
         return ControllerResult.noMove();
     }
 
+    /**
+     * קליק שני על *אותה* משבצת כמו הראשון = קפיצה (requestJump),
+     * לא מהלך-רגיל. אחרת - כרגיל, request_move אל היעד.
+     */
     private ControllerResult handleSecondClick(Position cell) {
-        MoveResult result = gameEngine.requestMove(selected, cell);
+        Position from = selected;
         selected = null;
-        return ControllerResult.moveRequested(result);
+
+        if (cell.equals(from)) {
+            return ControllerResult.moveRequested(gameEngine.requestJump(cell));
+        }
+
+        return ControllerResult.moveRequested(gameEngine.requestMove(from, cell));
     }
 
     /** שואל את ה-GameSnapshot (לא את Board) האם יש כלי בתא, ומה צבעו. */

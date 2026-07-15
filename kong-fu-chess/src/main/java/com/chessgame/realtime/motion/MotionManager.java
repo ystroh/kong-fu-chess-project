@@ -89,4 +89,11 @@ public final class MotionManager {
         }
         return arrived;
     }
+    /** מחזירה את ה-Motion הפעיל שיוצא מהתא הנתון, או null אם אין. */
+    public Motion motionOf(Position position) {
+        for (Motion m : activeMotions) {
+            if (m.source().equals(position)) return m;
+        }
+        return null;
+    }
 }

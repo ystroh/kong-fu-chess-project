@@ -29,7 +29,7 @@ public final class Piece {
     }
 
     public enum State {
-        IDLE, MOVING, AIRBORNE, COOLDOWN, CAPTURED
+        IDLE, MOVING, AIRBORNE, COOLDOWN_LONG, COOLDOWN_SHORT, CAPTURED
     }
 
 

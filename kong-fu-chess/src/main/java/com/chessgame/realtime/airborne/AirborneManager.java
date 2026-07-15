@@ -45,14 +45,17 @@ public final class AirborneManager {
         jump.piece.setState(Piece.State.IDLE);
     }
 
-    /** מנחית באופן טבעי כל קפיצה שזמנה פג, בלי שנלכד עליה אף כלי. */
-    public void landExpiredJumps(long gameClock) {
+    /** מנחית באופן טבעי כל קפיצה שזמנה פג, בלי שנלכד עליה אף כלי. מחזיר את הכלים-שנחתו. */
+    public List<Piece> landExpiredJumps(long gameClock) {
+        List<Piece> landed = new ArrayList<>();
         activeAirborne.removeIf(a -> {
             if (a.hasLanded(gameClock)) {
                 a.piece.setState(Piece.State.IDLE);
+                landed.add(a.piece);
                 return true;
             }
             return false;
         });
+        return landed;
     }
 }

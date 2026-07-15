@@ -16,7 +16,8 @@ public final class GameSnapshot {
     private final boolean gameOver;
     private final Piece.Color winner;
 
-    public GameSnapshot(int width, int height, List<PieceView> pieces, Position selectedCell, boolean gameOver, Piece.Color winner) {
+    public GameSnapshot(int width, int height, List<PieceView> pieces, Position selectedCell,
+                         boolean gameOver, Piece.Color winner) {
         this.width = width;
         this.height = height;
         this.pieces = Collections.unmodifiableList(pieces);
@@ -31,19 +32,44 @@ public final class GameSnapshot {
     public Position selectedCell() { return selectedCell; }
     public boolean isGameOver() { return gameOver; }
     public Piece.Color winner() { return winner; }
+
     public static final class PieceView {
         private final String id;
         private final Piece.Color color;
         private final Piece.Kind kind;
         private final Position position;
         private final Piece.State state;
+        private final double displayRow;
+        private final double displayCol;
+        private final double cooldownRemaining;
 
+        /** בנאי לכלי-ללא-תנועה-ובלי-קירור - displayRow/Col=position, cooldownRemaining=0. */
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state) {
+            this(id, color, kind, position, state, position.row(), position.col(), 0.0);
+        }
+
+        /** בנאי לכלי-בתנועה (MOVING) - displayRow/Col כבר מחושבים, cooldownRemaining=0. */
+        public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
+                          double displayRow, double displayCol) {
+            this(id, color, kind, position, state, displayRow, displayCol, 0.0);
+        }
+
+        /** בנאי לכלי-בקירור (COOLDOWN_LONG/SHORT) - לא זז, אבל יש שארית-קירור. */
+        public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
+                          double cooldownRemaining) {
+            this(id, color, kind, position, state, position.row(), position.col(), cooldownRemaining);
+        }
+
+        private PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
+                           double displayRow, double displayCol, double cooldownRemaining) {
             this.id = id;
             this.color = color;
             this.kind = kind;
             this.position = position;
             this.state = state;
+            this.displayRow = displayRow;
+            this.displayCol = displayCol;
+            this.cooldownRemaining = cooldownRemaining;
         }
 
         public String id() { return id; }
@@ -51,5 +77,12 @@ public final class GameSnapshot {
         public Piece.Kind kind() { return kind; }
         public Position position() { return position; }
         public Piece.State state() { return state; }
+
+        /** איפה לצייר את הכלי *עכשיו* (שפת-לוח, אולי עם שבר) - לא בהכרח position(). */
+        public double displayRow() { return displayRow; }
+        public double displayCol() { return displayCol; }
+
+        /** 0 עד 1 - כמה קירור נשאר (1=בדיוק-עכשיו-נכנס, 0=אין-קירור-פעיל/הסתיים). */
+        public double cooldownRemaining() { return cooldownRemaining; }
     }
 }
