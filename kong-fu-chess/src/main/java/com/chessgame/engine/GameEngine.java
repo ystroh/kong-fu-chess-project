@@ -13,6 +13,7 @@ import com.chessgame.model.Piece;
 
 import java.util.ArrayList;
 import java.util.List;
+
 public final class GameEngine {
     private final Board board;
     private final GameState gameState;
@@ -27,15 +28,9 @@ public final class GameEngine {
         this.gameState = gameState;
         this.ruleEngine = ruleEngine;
         this.realTimeArbiter = realTimeArbiter;
-        // roster נלקח *כאן*, פעם אחת - board כבר מכיל את כל הכלים
-        // ההתחלתיים (GameSession בונה אותו לפני GameEngine), ועוד
-        // לפני שקורות לכידות. אלה בדיוק אותם אובייקטי-Piece שהלוח
-        // ימשיך להחזיק/להסיר - state()/kind() שלהם ממשיכים להתעדכן
-        // "בחיים", גם אחרי ש-Board מפסיק להחזיק בהם.
         this.roster = board.allPieces();
     }
 
-    /** רושם מאזין - יקבל קריאה בכל שינוי-מצב (מהלך התקבל / זמן התקדם). */
     public void addListener(GameListener listener) {
         listeners.add(listener);
     }
@@ -50,7 +45,6 @@ public final class GameEngine {
         }
     }
 
-    /** ניקוד-הצבע: סכום-ערכים של כלי-היריב שנלכדו עד כה (ראו ScoreCalculator). */
     public int score(Piece.Color color) {
         return ScoreCalculator.score(roster, color);
     }
@@ -79,7 +73,6 @@ public final class GameEngine {
         return MoveResult.accepted();
     }
 
-    /** רשימת-כל-המהלכים-שהתקבלו עד כה, לפי סדר - לצריכה ע"י MoveHistoryPanel. */
     public java.util.List<MoveRecord> moveHistory() {
         return moveHistory.all();
     }
@@ -144,9 +137,6 @@ public final class GameEngine {
                     pieces.add(new GameSnapshot.PieceView(
                             piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state(), remaining));
                 } else {
-                    // AIRBORNE (קפיצה) נשאר כמו שהיה - בלי אינטרפולציה
-                    // אופקית (אין לה destination בכלל, ראו AirborneMotion),
-                    // וגם IDLE/CAPTURED - displayRow/Col == position, בלי קירור.
                     pieces.add(new GameSnapshot.PieceView(
                             piece.id(), piece.color(), piece.kind(), piece.cell(), piece.state()));
                 }

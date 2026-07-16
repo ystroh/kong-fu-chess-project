@@ -9,19 +9,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * ScriptRunner / מריץ-סקריפט
- *
- * תפקיד: מבצע Script בפועל. תלוי *רק* ב-BoardParser, BoardPrinter,
- * ו-GameSession (שדרכה מגיעים Controller ו-GameEngine) - בדיוק לפי
- * המסמך: "TextTestRunner depends on BoardParser, BoardPrinter,
- * Controller, and GameEngine". לא בונה RuleEngine/RealTimeArbiter/
- * PieceRules/GameState בעצמו - זה תפקיד GameSession, אותה מחלקה
- * בדיוק ש-App.java משתמש בה. לפני התיקון, ScriptRunner שכפל את כל
- * לוגיקת-ההרכבה בעצמו - הפרת-תלויות ושכפול-קוד גם יחד.
- *
- * אסור-במפורש (המסמך): קריאה ישירה ל-Board.movePiece - אין כזו כאן.
- */
 public final class ScriptRunner {
 
     public static final class Mismatch {
@@ -36,7 +23,6 @@ public final class ScriptRunner {
         }
     }
 
-    /** מריץ סקריפט מקצה-לקצה. מחזיר רשימת אי-התאמות - ריקה = הסקריפט עבר במלואו. */
     public List<Mismatch> run(Script script) {
         Board board = new BoardParser().parse(script.boardText());
         GameSession session = new GameSession(board);

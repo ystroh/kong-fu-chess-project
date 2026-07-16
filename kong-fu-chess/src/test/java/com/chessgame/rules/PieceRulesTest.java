@@ -10,13 +10,6 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * PieceRulesTest / טסטים לחוקי-התנועה
- *
- * מעודכן לפי הכללים החדשים: כלי-ידיד באמצע-מסלול עדיין חוסם
- * לגמרי. כלי-אויב באמצע-מסלול *לא* חוסם יותר - ניתן לטרגט גם
- * משבצות-מעבר-לו (ה"התנגשות" בפועל מטופלת ב-realtime, לא כאן).
- */
 class PieceRulesTest {
 
     private final PieceRules pieceRules = new PieceRules();

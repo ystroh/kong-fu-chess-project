@@ -13,17 +13,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * ControllerTest / טסטים ל-Controller
- *
- * הערה חשובה: המסמך מציע "unit tests עם GameEngine מזויף (fake)".
- * אצלנו GameEngine היא מחלקה final (בכוונה - אין סיבה שמישהו יירש
- * ממנה) - כדי "לזייף" אותה באמת היינו צריכות ספריית-mocking נוספת
- * (כמו Mockito) שעדיין לא הוספנו לפרויקט. לכן, בפרגמטיות, הטסטים
- * כאן משתמשים ב-GameEngine *אמיתי* (עם לוח קטן וממוקד) - זה בודק
- * את התנהגות ה-Controller בפועל, רק לא ב"בידוד מוחלט" כמו שהמסמך
- * מציע. אם בעתיד תרצי mocking אמיתי - נוסיף Mockito.
- */
 class ControllerTest {
 
     private Board board;
@@ -42,22 +31,22 @@ class ControllerTest {
 
     @Test
     void firstClickOnEmptyCell_isIgnored() {
-        ControllerResult result = controller.click(150, 50); // (0,1) - ריק
+        ControllerResult result = controller.click(150, 50);
 
         assertFalse(result.requestedMove());
     }
 
     @Test
     void firstClickOnAPiece_selectsItWithoutRequestingAMove() {
-        ControllerResult result = controller.click(50, 50); // (0,0) - wK
+        ControllerResult result = controller.click(50, 50);
 
-        assertFalse(result.requestedMove()); // בחירה בלבד, אין פקודה ל-GameEngine עדיין
+        assertFalse(result.requestedMove());
     }
 
     @Test
     void secondClickOnEmptyCell_requestsAMove() {
-        controller.click(50, 50);              // בוחר wK ב-(0,0)
-        ControllerResult result = controller.click(50, 150); // (1,0) ריק, בקו-ישר, חוקי למלך
+        controller.click(50, 50);
+        ControllerResult result = controller.click(50, 150);
 
         assertTrue(result.requestedMove());
         assertTrue(result.moveResult().isAccepted());
@@ -65,38 +54,32 @@ class ControllerTest {
 
     @Test
     void secondClickOnFriendlyPiece_sendsRequestMove_notReselect() {
-        // שינוי-כלל: קליק-שני *תמיד* שולח request_move, גם על-כלי-
-        // ידידותי - בדיוק כמו שהמסמך קובע ("whether the move is
-        // legal or illegal"). RuleEngine (לא Controller) מחליט.
         board = new BoardParser().parse("wK wR .\n. . .\n. . .");
         GameState gameState = new GameState();
         GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
         controller = new Controller(new BoardMapper(board), engine);
 
-        controller.click(50, 50);              // בוחר wK
-        ControllerResult result = controller.click(150, 50);  // wR - ידידותי
+        controller.click(50, 50);
+        ControllerResult result = controller.click(150, 50);
 
-        assertTrue(result.requestedMove()); // עכשיו *כן* נשלח מהלך
-        assertFalse(result.moveResult().isAccepted()); // ונדחה - מלך לא-יכול-לאכול-ידיד
+        assertTrue(result.requestedMove());
+        assertFalse(result.moveResult().isAccepted());
         assertEquals(com.chessgame.rules.MoveReason.FRIENDLY_DESTINATION, result.moveResult().reason());
     }
 
     @Test
     void knightCanCaptureFriendlyPieceThroughController() {
-        // בדיוק הבאג שתוקן: לפני התיקון, קליק-שני-על-ידיד תמיד
-        // "נבחר-מחדש" - גם לפרש, שמותר-לו-לטרגט-ידיד. עכשיו זה
-        // נגיש דרך Controller, לא רק דרך GameEngine ישירות.
         board = new BoardParser().parse(". . .\n. . wP\n. . .");
         board.addPiece(new com.chessgame.model.Piece("n", com.chessgame.model.Piece.Color.WHITE, com.chessgame.model.Piece.Kind.KNIGHT, new com.chessgame.model.Position(0, 0)));
         GameState gameState = new GameState();
         GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
         controller = new Controller(new BoardMapper(board), engine);
 
-        controller.click(50, 50);                     // בוחר פרש ב-(0,0)
-        ControllerResult result = controller.click(250, 150); // wP ב-(1,2) - ידידותי
+        controller.click(50, 50);
+        ControllerResult result = controller.click(250, 150);
 
         assertTrue(result.requestedMove());
-        assertTrue(result.moveResult().isAccepted()); // הפרש *כן* יכול לטרגט את הידיד
+        assertTrue(result.moveResult().isAccepted());
     }
 
     @Test
@@ -108,31 +91,28 @@ class ControllerTest {
 
     @Test
     void clickOutsideBoard_withActiveSelection_cancelsSelectionWithoutSendingACommand() {
-        controller.click(50, 50); // בוחר wK
+        controller.click(50, 50);
 
-        ControllerResult result = controller.click(-10, -10); // מבטל
+        ControllerResult result = controller.click(-10, -10);
 
-        assertFalse(result.requestedMove()); // בלי שום פקודה ל-GameEngine
+        assertFalse(result.requestedMove());
 
-        // הוכחה שהבחירה באמת בוטלה: קליק הבא הוא "קליק ראשון" חדש
-        // (על תא-ריק) - לא "קליק שני" שהיה שולח מהלך
         ControllerResult next = controller.click(50, 150);
         assertFalse(next.requestedMove());
     }
 
     @Test
     void secondClickAlwaysClearsSelection_evenWhenMoveIsRejected() {
-        controller.click(50, 50); // בוחר wK
-        controller.click(250, 250); // יעד רחוק/לא-חוקי למלך - נדחה
+        controller.click(50, 50);
+        controller.click(250, 250);
 
-        // הבחירה חייבת להתאפס בכל מקרה - קליק הבא הוא "קליק ראשון" חדש
         ControllerResult next = controller.click(50, 150);
-        assertFalse(next.requestedMove()); // רק בחירה, לא מהלך - כלומר זה נחשב "ראשון"
+        assertFalse(next.requestedMove());
     }
 
     @Test
     void jump_requestsAJumpDirectly() {
-        ControllerResult result = controller.jump(150, 50); // bR ב-(0,1)
+        ControllerResult result = controller.jump(150, 50);
 
         assertTrue(result.requestedMove());
         assertTrue(result.moveResult().isAccepted());

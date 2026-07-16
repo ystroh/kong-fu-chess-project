@@ -12,18 +12,6 @@ import com.chessgame.realtime.motion.MotionManager;
 
 import java.util.List;
 
-/**
- * RealTimeArbiter / בורר-זמן-אמת
- *
- * תפקיד: "שער הכניסה" הציבורי היחיד ל-GameEngine. מתאם בין כל
- * המנגנונים הפנימיים - בלי להכיל שום לוגיקה עצמאית משל עצמו.
- *
- * סדר-הפעולות ב-advanceTime חשוב: (1) CollisionManager קודם - כדי
- * שמהלכים-שקוצרו/הוסרו-בהתנגשות לא "יתפסו" בטעות ב-collectArrived
- * עם היעד-הישן. (2) collectArrived+ArrivalResolver - הגעה-רגילה.
- * (3) קירור - *אחרי* ArrivalResolver, כי רק כלים-שהגיעו-בהצלחה
- * (state==IDLE, לא CAPTURED) אמורים להיכנס לקירור.
- */
 public final class RealTimeArbiter {
     private static final int CELL_DURATION_MS = 1000;
     private static final int JUMP_DURATION_MS = 1000;
@@ -44,12 +32,6 @@ public final class RealTimeArbiter {
         this.arrivalResolver = new JumpAwareArrivalResolver(board, commonRouteResolver, airborneManager);
     }
 
-    /**
-     * האם מותר להתחיל תנועה ממקור ליעד עכשיו - הכלי לא כבר בתנועה,
-     * לא מרחף, ולא בקירור. *אין* בדיקת חסימת-מסלול/יעד-שמור כאן -
-     * זו כבר אחריות RuleEngine (חוסם-ידיד) ו-CollisionManager (מטפל
-     * באויב-שבדרך, בזמן-אמת).
-     */
     public boolean canStartMotion(Position source, Position destination) {
         if (motionManager.isPieceMoving(source)) return false;
         if (airborneManager.isPieceAirborne(source)) return false;
@@ -57,22 +39,18 @@ public final class RealTimeArbiter {
         return true;
     }
 
-    /** שעון-המשחק הנוכחי (לא זמן-אמיתי!) - הבסיס שממנו נמדדים startTime/arrivalTime של כל Motion. */
     public long gameClock() {
         return gameClock;
     }
 
-    /** ה-Motion הפעיל של הכלי בתא הנתון (אם הוא באמצע תנועה/קפיצה), או null. */
     public Motion motionOf(Position source) {
         return motionManager.motionOf(source);
     }
 
-    /** חלון-הזמן של הקירור-הפעיל בתא הנתון (אם יש), או null. */
     public CooldownManager.CooldownWindow cooldownOf(Position position) {
         return cooldownManager.cooldownOf(position);
     }
 
-    /** האם מותר להתחיל קפיצה מהתא הנתון עכשיו. */
     public boolean canStartJump(Position position) {
         if (motionManager.isPieceMoving(position)) return false;
         if (airborneManager.isPieceAirborne(position)) return false;
@@ -99,7 +77,6 @@ public final class RealTimeArbiter {
         airborneManager.startJump(position, piece, landTime);
     }
 
-    /** מקדם זמן מדומה. מחזיר true אם הייתה לכידת-מלך, מכל מקור שהוא. */
     public boolean advanceTime(int milliseconds) {
         gameClock += milliseconds;
 

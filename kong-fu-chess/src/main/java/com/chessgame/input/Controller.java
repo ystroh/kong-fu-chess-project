@@ -7,23 +7,6 @@ import com.chessgame.model.Position;
 
 import java.util.Optional;
 
-/**
- * Controller / קונטרולר
- *
- * תפקיד: מתרגם קליקים לפקודות-משחק. תלוי *רק* ב-BoardMapper וב-
- * GameEngine - בדיוק כמו שהמסמך קובע במפורש. Board *לא* מופיע
- * ברשימת-התלויות - כדי לדעת "האם יש כלי בתא" (קליק ראשון), הקונטרולר
- * שואל את ה-GameSnapshot דרך gameEngine.snapshot(...), לא Board.
- *
- * שינוי חשוב: הוסרה לגמרי לוגיקת "בחירה-מחדש-כשהיעד-ידידותי"
- * (isFriendlyReselect). המסמך קובע במפורש: "On second click, call
- * GameEngine.request_move... Clear selection after every second
- * in-board click, whether the move is legal or illegal" - קליק שני
- * *תמיד* שולח request_move, בלי-תנאי; RuleEngine (לא Controller)
- * מחליט אם זה חוקי. זה גם פותר בעיה אמיתית: פרש שמותר-לו לטרגט
- * ידיד (KnightRule) היה בעבר בלתי-נגיש דרך קליקים בכלל, כי
- * isFriendlyReselect "יירט" את הקליק לפני ש-request_move נשלח.
- */
 public final class Controller {
     private final BoardMapper boardMapper;
     private final GameEngine gameEngine;
@@ -36,11 +19,6 @@ public final class Controller {
 
     public Position selectedCell() { return selected; }
 
-    /**
-     * מעביר את גודל-המשבצת העדכני ל-BoardMapper הפנימי, בלי לחשוף
-     * אותו עצמו החוצה. יש לקרוא לזה מ-GameWindow, לפני כל click(),
-     * עם ה-cellSize שחושב הרגע מגודל-הפאנל הנוכחי.
-     */
     public void setCellSizePx(int cellSizePx) {
         boardMapper.setCellSizePx(cellSizePx);
     }
@@ -81,10 +59,6 @@ public final class Controller {
         return ControllerResult.noMove();
     }
 
-    /**
-     * קליק שני על *אותה* משבצת כמו הראשון = קפיצה (requestJump),
-     * לא מהלך-רגיל. אחרת - כרגיל, request_move אל היעד.
-     */
     private ControllerResult handleSecondClick(Position cell) {
         Position from = selected;
         selected = null;
@@ -96,7 +70,6 @@ public final class Controller {
         return ControllerResult.moveRequested(gameEngine.requestMove(from, cell));
     }
 
-    /** שואל את ה-GameSnapshot (לא את Board) האם יש כלי בתא, ומה צבעו. */
     private Optional<Piece.Color> pieceColorAt(Position cell) {
         GameSnapshot snapshot = gameEngine.snapshot(selected);
         for (GameSnapshot.PieceView piece : snapshot.pieces()) {

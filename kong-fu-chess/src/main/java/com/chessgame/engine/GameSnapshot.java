@@ -43,18 +43,15 @@ public final class GameSnapshot {
         private final double displayCol;
         private final double cooldownRemaining;
 
-        /** בנאי לכלי-ללא-תנועה-ובלי-קירור - displayRow/Col=position, cooldownRemaining=0. */
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state) {
             this(id, color, kind, position, state, position.row(), position.col(), 0.0);
         }
 
-        /** בנאי לכלי-בתנועה (MOVING) - displayRow/Col כבר מחושבים, cooldownRemaining=0. */
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
                           double displayRow, double displayCol) {
             this(id, color, kind, position, state, displayRow, displayCol, 0.0);
         }
 
-        /** בנאי לכלי-בקירור (COOLDOWN_LONG/SHORT) - לא זז, אבל יש שארית-קירור. */
         public PieceView(String id, Piece.Color color, Piece.Kind kind, Position position, Piece.State state,
                           double cooldownRemaining) {
             this(id, color, kind, position, state, position.row(), position.col(), cooldownRemaining);
@@ -78,11 +75,9 @@ public final class GameSnapshot {
         public Position position() { return position; }
         public Piece.State state() { return state; }
 
-        /** איפה לצייר את הכלי *עכשיו* (שפת-לוח, אולי עם שבר) - לא בהכרח position(). */
         public double displayRow() { return displayRow; }
         public double displayCol() { return displayCol; }
 
-        /** 0 עד 1 - כמה קירור נשאר (1=בדיוק-עכשיו-נכנס, 0=אין-קירור-פעיל/הסתיים). */
         public double cooldownRemaining() { return cooldownRemaining; }
     }
 }
