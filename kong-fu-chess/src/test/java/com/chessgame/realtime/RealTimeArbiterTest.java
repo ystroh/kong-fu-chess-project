@@ -108,7 +108,11 @@ class RealTimeArbiterTest {
 
         // הכלי עדיין באותו מקום - אין שינוי בלוח, רק "נחת" (הפסיק להיות מרחף)
         assertNotNull(board.pieceAt(new Position(0, 0)));
-        // ההוכחה שהוא "נחת": עכשיו מותר להתחיל בשבילו מהלך רגיל חדש
+        // מיד-בנחיתה נכנס למנוחה-קצרה (COOLDOWN_SHORT, 400ms) - עדיין אסור לזוז
+        assertFalse(arbiter.canStartMotion(new Position(0, 0), new Position(0, 1)));
+
+        arbiter.advanceTime(400); // המנוחה-הקצרה פגה
+        // ורק *עכשיו* מותר להתחיל בשבילו מהלך רגיל חדש
         assertTrue(arbiter.canStartMotion(new Position(0, 0), new Position(0, 1)));
     }
 }
