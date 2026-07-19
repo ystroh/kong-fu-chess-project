@@ -1,5 +1,6 @@
 package com.chessgame.model;
 
+import com.chessgame.common.model.Position;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

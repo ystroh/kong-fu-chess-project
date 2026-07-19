@@ -1,7 +1,7 @@
 package com.chessgame;
 
-import com.chessgame.io.BoardParser;
-import com.chessgame.model.Board;
+import com.chessgame.server.io.BoardParser;
+import com.chessgame.common.model.Board;
 
 import java.io.BufferedReader;
 import java.io.IOException;

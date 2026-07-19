@@ -1,9 +1,10 @@
 package com.chessgame.rules;
 
-import com.chessgame.model.Board;
-import com.chessgame.model.Piece;
-import com.chessgame.model.Position;
-import com.chessgame.io.BoardParser;
+import com.chessgame.common.model.Board;
+import com.chessgame.common.model.Piece;
+import com.chessgame.common.model.Position;
+import com.chessgame.server.io.BoardParser;
+import com.chessgame.server.rules.PieceRules;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;

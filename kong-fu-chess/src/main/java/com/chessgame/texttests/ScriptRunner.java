@@ -1,9 +1,9 @@
 package com.chessgame.texttests;
 
 import com.chessgame.GameSession;
-import com.chessgame.io.BoardParser;
-import com.chessgame.io.BoardPrinter;
-import com.chessgame.model.Board;
+import com.chessgame.server.io.BoardParser;
+import com.chessgame.server.io.BoardPrinter;
+import com.chessgame.common.model.Board;
 
 import java.util.ArrayList;
 import java.util.Arrays;

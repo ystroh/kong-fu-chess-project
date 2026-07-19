@@ -1,6 +1,6 @@
 package com.chessgame;
 
-import com.chessgame.io.BoardPrinter;
+import com.chessgame.server.io.BoardPrinter;
 
 import java.util.Optional;
 

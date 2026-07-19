@@ -1,5 +1,8 @@
 package com.chessgame.model;
 
+import com.chessgame.common.model.Board;
+import com.chessgame.common.model.Piece;
+import com.chessgame.common.model.Position;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

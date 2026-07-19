@@ -1,6 +1,9 @@
 package com.chessgame.io;
 
-import com.chessgame.model.Board;
+import com.chessgame.common.model.Board;
+import com.chessgame.common.model.Position;
+import com.chessgame.server.io.BoardParser;
+import com.chessgame.server.io.BoardPrinter;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,7 +40,7 @@ class BoardPrinterTest {
     @Test
     void printReflectsBoardChangesAfterAMove() {
         Board board = parser.parse("wR . .");
-        board.movePiece(new com.chessgame.model.Position(0, 0), new com.chessgame.model.Position(0, 1));
+        board.movePiece(new Position(0, 0), new Position(0, 1));
 
         assertEquals(". wR .", printer.print(board));
     }

@@ -1,13 +1,13 @@
 package com.chessgame;
 
-import com.chessgame.engine.GameEngine;
-import com.chessgame.input.BoardMapper;
-import com.chessgame.input.Controller;
-import com.chessgame.model.Board;
-import com.chessgame.model.GameState;
-import com.chessgame.realtime.RealTimeArbiter;
-import com.chessgame.rules.PieceRules;
-import com.chessgame.rules.RuleEngine;
+import com.chessgame.server.engine.GameEngine;
+import com.chessgame.client.input.BoardMapper;
+import com.chessgame.client.input.Controller;
+import com.chessgame.common.model.Board;
+import com.chessgame.server.model.GameState;
+import com.chessgame.server.realtime.RealTimeArbiter;
+import com.chessgame.server.rules.PieceRules;
+import com.chessgame.server.rules.RuleEngine;
 
 public final class GameSession {
     public final Board board;
