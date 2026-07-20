@@ -2,7 +2,7 @@ package com.chessgame.server;
 
 
 import com.chessgame.common.model.Piece;
-import com.chessgame.server.network.ServerSocketConnection;
+import com.chessgame.server.application.ServerSocketConnection;
 
 public final class PlayerConnection {
 

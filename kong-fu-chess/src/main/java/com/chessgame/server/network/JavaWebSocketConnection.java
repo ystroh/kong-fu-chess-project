@@ -1,6 +1,7 @@
 package com.chessgame.server.network;
 
 
+import com.chessgame.server.application.ServerSocketConnection;
 import org.java_websocket.WebSocket;
 
 public final class JavaWebSocketConnection implements ServerSocketConnection {

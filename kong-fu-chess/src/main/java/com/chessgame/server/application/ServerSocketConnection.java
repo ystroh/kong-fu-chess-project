@@ -1,4 +1,4 @@
-package com.chessgame.server.network;
+package com.chessgame.server.application;
 
 
 public interface ServerSocketConnection {
