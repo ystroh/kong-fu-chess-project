@@ -2,7 +2,7 @@ package com.chessgame.server.rules;
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.model.Position;
-import com.chessgame.rules.pieces.*;
+import com.chessgame.server.rules.pieces.*;
 import com.chessgame.server.rules.pieces.*;
 
 import java.util.EnumMap;
