@@ -1,8 +1,7 @@
 package com.chessgame.server.application;
 
-import com.chessgame.server.network.ConnectionSession;
+import com.chessgame.server.ConnectionSession;
 import com.chessgame.server.GameMatch;
-import com.chessgame.server.PlayerConnection;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,10 +9,12 @@ import java.util.Map;
 public final class RoomManager {
 
     public sealed interface JoinResult permits NotFound, Paired, JoinedAsSpectator {}
+
     public record NotFound() implements JoinResult {}
-    public record Paired(
-            ConnectionSession whiteSession, PlayerConnection white,
-            ConnectionSession blackSession, PlayerConnection black) implements JoinResult {}
+
+    public record Paired(String whiteUsername, ConnectionSession whiteSession,
+                          String blackUsername, ConnectionSession blackSession) implements JoinResult {}
+
     public record JoinedAsSpectator() implements JoinResult {}
 
     private static final class Room {
@@ -36,13 +37,10 @@ public final class RoomManager {
         }
 
         if (room.match == null) {
-            PlayerConnection white = new PlayerConnection(room.hostSession.connection(), PlayerConnection.Role.WHITE);
-            PlayerConnection black = new PlayerConnection(session.connection(), PlayerConnection.Role.BLACK);
-            return new Paired(room.hostSession, white, session, black);
+            return new Paired(room.hostSession.username(), room.hostSession, session.username(), session);
         }
 
-        PlayerConnection spectator = new PlayerConnection(session.connection(), PlayerConnection.Role.SPECTATOR);
-        room.match.addSpectator(spectator);
+        room.match.addSpectator(session.username());
         return new JoinedAsSpectator();
     }
 

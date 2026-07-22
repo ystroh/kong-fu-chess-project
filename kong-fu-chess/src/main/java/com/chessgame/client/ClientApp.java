@@ -1,69 +1,59 @@
 package com.chessgame.client;
 
 import com.chessgame.client.network.ServerConnection;
+import com.chessgame.client.network.ServerGateway;
 import com.chessgame.client.network.WebSocketServerConnection;
 import com.chessgame.client.ui.AuthScreen;
 import com.chessgame.client.ui.GameWindow;
 import com.chessgame.client.ui.MenuScreen;
 import com.chessgame.common.model.Piece;
-import com.chessgame.common.protocol.request.LoginMessage;
-import com.chessgame.common.protocol.request.MessageType;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 
 public final class ClientApp {
 
     private static final String SERVER_URL = "ws://localhost:8887";
 
-    private final Gson gson = new Gson();
     private String savedUsername;
     private String savedPassword;
     private GameWindow activeGameWindow;
 
     public void start() {
         ServerConnection connection = new WebSocketServerConnection(SERVER_URL);
-        showAuthScreen(connection);
+        ServerGateway gateway = new ServerGateway(connection);
+        showAuthScreen(gateway);
     }
 
-    private void showAuthScreen(ServerConnection connection) {
-        AuthScreen authScreen = new AuthScreen(connection,
+    private void showAuthScreen(ServerGateway gateway) {
+        AuthScreen authScreen = new AuthScreen(gateway,
                 (username, password) -> {
                     savedUsername = username;
                     savedPassword = password;
-                    showMenu(connection, username);
+                    showMenu(gateway, username);
                 },
                 (color, username) -> {
                     savedUsername = username;
-                    startGame(connection, color, username);
+                    startGame(gateway, color, username);
                 });
         authScreen.setVisible(true);
     }
 
-    private void showMenu(ServerConnection connection, String username) {
-        MenuScreen menuScreen = new MenuScreen(connection, username, color -> startGame(connection, color, username));
+    private void showMenu(ServerGateway gateway, String username) {
+        MenuScreen menuScreen = new MenuScreen(gateway, username, color -> startGame(gateway, color, username));
         menuScreen.setVisible(true);
     }
 
-    private void startGame(ServerConnection connection, Piece.Color myColor, String username) {
+    private void startGame(ServerGateway gateway, Piece.Color myColor, String username) {
         String whiteName = myColor == Piece.Color.WHITE ? username : "Opponent";
         String blackName = myColor == Piece.Color.BLACK ? username : "Opponent";
 
-        activeGameWindow = new GameWindow(connection, myColor, whiteName, blackName);
-        activeGameWindow.setDisconnectCallback(this::attemptReconnect);
+        activeGameWindow = new GameWindow(gateway, myColor, whiteName, blackName);
+        activeGameWindow.setDisconnectCallback(() -> attemptReconnect(gateway));
         activeGameWindow.init();
     }
 
-    private void attemptReconnect() {
+    private void attemptReconnect(ServerGateway gateway) {
         ServerConnection newConnection = new WebSocketServerConnection(SERVER_URL);
-        newConnection.setMessageListener(message -> {
-            if (message.startsWith("RESUME:")) {
-                activeGameWindow.reconnect(newConnection);
-            }
-        });
-
-        JsonObject json = gson.toJsonTree(new LoginMessage(savedUsername, savedPassword)).getAsJsonObject();
-        json.addProperty("type", MessageType.LOGIN.name());
-        newConnection.send(json.toString());
+        gateway.updateConnection(newConnection);
+        gateway.login(savedUsername, savedPassword);
     }
 
     public static void main(String[] args) {

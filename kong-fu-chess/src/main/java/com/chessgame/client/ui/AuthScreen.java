@@ -1,10 +1,11 @@
 package com.chessgame.client.ui;
 
-import com.chessgame.client.network.ServerConnection;
+import com.chessgame.client.network.ServerGateway;
 import com.chessgame.common.model.Piece;
-import com.chessgame.common.protocol.request.LoginMessage;
-import com.chessgame.common.protocol.request.MessageType;
-import com.chessgame.common.protocol.request.RegisterMessage;
+import com.chessgame.common.protocol.response.AuthOkMessage;
+import com.chessgame.common.protocol.response.ErrorMessage;
+import com.chessgame.common.protocol.response.ResumeMessage;
+import com.chessgame.common.protocol.response.ServerMessageType;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -15,19 +16,19 @@ import java.util.function.BiConsumer;
 public final class AuthScreen extends JFrame {
     private static final Color ACCENT_GOLD = new Color(212, 175, 55);
 
-    private final ServerConnection connection;
+    private final ServerGateway gateway;
     private final BiConsumer<String, String> onAuthenticated;
-    private final java.util.function.BiConsumer<Piece.Color, String> onResumed;
+    private final BiConsumer<Piece.Color, String> onResumed;
     private final Gson gson = new Gson();
     private JLabel statusLabel;
     private String pendingUsername;
     private String pendingPassword;
 
-    public AuthScreen(ServerConnection connection,
+    public AuthScreen(ServerGateway gateway,
                       BiConsumer<String, String> onAuthenticated,
                       BiConsumer<Piece.Color, String> onResumed) {
         super("Kong Fu Chess - Login");
-        this.connection = connection;
+        this.gateway = gateway;
         this.onAuthenticated = onAuthenticated;
         this.onResumed = onResumed;
 
@@ -35,7 +36,9 @@ public final class AuthScreen extends JFrame {
         setSize(420, 320);
         setLocationRelativeTo(null);
 
-        connection.setMessageListener(this::handleServerMessage);
+        gateway.subscribe(this, ServerMessageType.AUTH_OK, this::handleAuthOk);
+        gateway.subscribe(this, ServerMessageType.ERROR, this::handleError);
+        gateway.subscribe(this, ServerMessageType.RESUME, this::handleResume);
 
         JPanel form = new JPanel(new GridBagLayout());
         form.setBackground(Color.BLACK);
@@ -59,8 +62,8 @@ public final class AuthScreen extends JFrame {
 
         JButton loginButton = new JButton("התחברות");
         JButton registerButton = new JButton("הרשמה");
-        loginButton.addActionListener(e -> send(MessageType.LOGIN, usernameField, passwordField));
-        registerButton.addActionListener(e -> send(MessageType.REGISTER, usernameField, passwordField));
+        loginButton.addActionListener(e -> submit(usernameField, passwordField, false));
+        registerButton.addActionListener(e -> submit(usernameField, passwordField, true));
 
         JPanel buttons = new JPanel(new FlowLayout());
         buttons.setBackground(Color.BLACK);
@@ -79,35 +82,37 @@ public final class AuthScreen extends JFrame {
         setContentPane(form);
     }
 
-    private void send(MessageType type, JTextField username, JPasswordField password) {
-        String user = username.getText().trim();
-        String pass = new String(password.getPassword());
-        this.pendingUsername = user;
-        this.pendingPassword = pass;
-
-        Object payload = type == MessageType.LOGIN
-                ? new LoginMessage(user, pass)
-                : new RegisterMessage(user, pass);
-
-        JsonObject json = gson.toJsonTree(payload).getAsJsonObject();
-        json.addProperty("type", type.name());
-        connection.send(json.toString());
+    private void submit(JTextField username, JPasswordField password, boolean isRegister) {
+        pendingUsername = username.getText().trim();
+        pendingPassword = new String(password.getPassword());
+        if (isRegister) {
+            gateway.register(pendingUsername, pendingPassword);
+        } else {
+            gateway.login(pendingUsername, pendingPassword);
+        }
     }
 
-    private void handleServerMessage(String message) {
+    private void handleAuthOk(JsonObject json) {
+        AuthOkMessage msg = gson.fromJson(json, AuthOkMessage.class);
         SwingUtilities.invokeLater(() -> {
-            if (message.startsWith("RESUME:")) {
-                Piece.Color color = Piece.Color.valueOf(message.substring("RESUME:".length()));
-                dispose();
-                onResumed.accept(color, pendingUsername);
-            } else if (message.startsWith("AUTH_OK:")) {
-                String username = message.substring("AUTH_OK:".length());
-                dispose();
-                onAuthenticated.accept(username, pendingPassword);
-            } else if (message.startsWith("AUTH_FAIL:")) {
-                statusLabel.setText(message.substring("AUTH_FAIL:".length()));
-            }
+            gateway.unsubscribeAll(this);
+            dispose();
+            onAuthenticated.accept(msg.username(), pendingPassword);
         });
+    }
+
+    private void handleResume(JsonObject json) {
+        ResumeMessage msg = gson.fromJson(json, ResumeMessage.class);
+        SwingUtilities.invokeLater(() -> {
+            gateway.unsubscribeAll(this);
+            dispose();
+            onResumed.accept(msg.color(), pendingUsername);
+        });
+    }
+
+    private void handleError(JsonObject json) {
+        ErrorMessage err = gson.fromJson(json, ErrorMessage.class);
+        SwingUtilities.invokeLater(() -> statusLabel.setText(err.detail()));
     }
 
     private JLabel label(String text) {

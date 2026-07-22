@@ -1,28 +1,32 @@
 package com.chessgame.server.events;
 
-import com.chessgame.server.PlayerConnection;
-import com.google.gson.Gson;
+import com.chessgame.common.protocol.response.GameStateMessage;
+import com.chessgame.common.protocol.response.ServerMessageType;
+import com.chessgame.server.network.ClientGateway;
 
 import java.util.List;
 
 public final class ClientNotificationHandler {
-    private final PlayerConnection white;
-    private final PlayerConnection black;
-    private final List<PlayerConnection> spectators;
-    private final Gson gson = new Gson();
 
-    public ClientNotificationHandler(PlayerConnection white, PlayerConnection black, List<PlayerConnection> spectators) {
-        this.white = white;
-        this.black = black;
-        this.spectators = spectators;
+    private final String whiteUsername;
+    private final String blackUsername;
+    private final List<String> spectatorUsernames;
+    private final ClientGateway gateway;
+
+    public ClientNotificationHandler(String whiteUsername, String blackUsername,
+                                      List<String> spectatorUsernames, ClientGateway gateway) {
+        this.whiteUsername = whiteUsername;
+        this.blackUsername = blackUsername;
+        this.spectatorUsernames = spectatorUsernames;
+        this.gateway = gateway;
     }
 
     public void onSnapshotUpdated(SnapshotUpdatedEvent event) {
-        String json = gson.toJson(event.snapshot());
-        white.send(json);
-        black.send(json);
-        for (PlayerConnection spectator : spectators) {
-            spectator.send(json);
+        GameStateMessage msg = new GameStateMessage(event.snapshot());
+        gateway.sendTo(whiteUsername, ServerMessageType.GAME_STATE, msg);
+        gateway.sendTo(blackUsername, ServerMessageType.GAME_STATE, msg);
+        for (String spectator : spectatorUsernames) {
+            gateway.sendTo(spectator, ServerMessageType.GAME_STATE, msg);
         }
     }
 }

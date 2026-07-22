@@ -8,11 +8,13 @@ import java.util.Optional;
 
 public final class UserRepository {
 
+    public static final int STARTING_RATING = 1200;
+
     public record User(String username, String passwordHash, int rating) {
     }
 
     private final Database database;
-    public static final int STARTING_RATING = 1200;
+
     public UserRepository(Database database) {
         this.database = database;
     }

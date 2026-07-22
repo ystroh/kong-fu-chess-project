@@ -1,11 +1,12 @@
 package com.chessgame.client.ui;
 
-import com.chessgame.client.network.ServerConnection;
+import com.chessgame.client.network.ServerGateway;
 import com.chessgame.common.model.Piece;
-import com.chessgame.common.protocol.request.CancelRoomMessage;
-import com.chessgame.common.protocol.request.CreateRoomMessage;
-import com.chessgame.common.protocol.request.JoinRoomMessage;
-import com.chessgame.common.protocol.request.MessageType;
+import com.chessgame.common.protocol.response.ErrorMessage;
+import com.chessgame.common.protocol.response.RoleMessage;
+import com.chessgame.common.protocol.response.RoomCancelledMessage;
+import com.chessgame.common.protocol.response.RoomCreatedMessage;
+import com.chessgame.common.protocol.response.ServerMessageType;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -18,21 +19,25 @@ public final class RoomScreen extends JFrame {
     private static final Font LABEL_FONT = new Font("SansSerif", Font.PLAIN, 16);
     private static final Font BUTTON_FONT = new Font("SansSerif", Font.BOLD, 15);
 
-    private final ServerConnection connection;
+    private final ServerGateway gateway;
     private final Consumer<Piece.Color> onGameStarted;
     private final Gson gson = new Gson();
     private JLabel statusLabel;
+    private JTextField roomField;
 
-    public RoomScreen(ServerConnection connection, String username, Consumer<Piece.Color> onGameStarted, Runnable onBack) {
+    public RoomScreen(ServerGateway gateway, Consumer<Piece.Color> onGameStarted, Runnable onBack) {
         super("Kong Fu Chess - Room");
-        this.connection = connection;
+        this.gateway = gateway;
         this.onGameStarted = onGameStarted;
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(460, 340);
         setLocationRelativeTo(null);
 
-        connection.setMessageListener(this::handleServerMessage);
+        gateway.subscribe(this, ServerMessageType.ROLE, this::handleRole);
+        gateway.subscribe(this, ServerMessageType.ROOM_CREATED, this::handleRoomCreated);
+        gateway.subscribe(this, ServerMessageType.ROOM_CANCELLED, this::handleRoomCancelled);
+        gateway.subscribe(this, ServerMessageType.ERROR, this::handleError);
 
         JPanel content = new JPanel(new BorderLayout());
         content.setBackground(Color.BLACK);
@@ -49,7 +54,7 @@ public final class RoomScreen extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(8, 0, 8, 0);
 
-        JTextField roomField = new JTextField(15);
+        roomField = new JTextField(15);
         roomField.setFont(LABEL_FONT);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
@@ -61,15 +66,13 @@ public final class RoomScreen extends JFrame {
         buttons.add(joinButton);
         buttons.add(cancelButton);
 
-        createButton.addActionListener(e ->
-                connection.send(toJson(MessageType.CREATE_ROOM, new CreateRoomMessage(roomField.getText().trim()))));
-        joinButton.addActionListener(e ->
-                connection.send(toJson(MessageType.JOIN_ROOM, new JoinRoomMessage(roomField.getText().trim()))));
-        cancelButton.addActionListener(e ->
-                connection.send(toJson(MessageType.CANCEL_ROOM, new CancelRoomMessage(roomField.getText().trim()))));
+        createButton.addActionListener(e -> gateway.createRoom(roomField.getText().trim()));
+        joinButton.addActionListener(e -> gateway.joinRoom(roomField.getText().trim()));
+        cancelButton.addActionListener(e -> gateway.cancelRoom(roomField.getText().trim()));
 
         JButton backButton = new JButton("חזרה לתפריט");
         backButton.addActionListener(e -> {
+            gateway.unsubscribeAll(this);
             dispose();
             onBack.run();
         });
@@ -93,23 +96,28 @@ public final class RoomScreen extends JFrame {
         return body;
     }
 
-    private String toJson(MessageType type, Object payload) {
-        JsonObject json = gson.toJsonTree(payload).getAsJsonObject();
-        json.addProperty("type", type.name());
-        return json.toString();
+    private void handleRole(JsonObject json) {
+        RoleMessage msg = gson.fromJson(json, RoleMessage.class);
+        SwingUtilities.invokeLater(() -> {
+            gateway.unsubscribeAll(this);
+            dispose();
+            onGameStarted.accept(msg.color());
+        });
     }
 
-    private void handleServerMessage(String message) {
-        SwingUtilities.invokeLater(() -> {
-            if (message.startsWith("ROLE:")) {
-                String value = message.substring("ROLE:".length());
-                Piece.Color color = value.equals("SPECTATOR") ? null : Piece.Color.valueOf(value);
-                dispose();
-                onGameStarted.accept(color);
-            } else {
-                statusLabel.setText(message);
-            }
-        });
+    private void handleRoomCreated(JsonObject json) {
+        RoomCreatedMessage msg = gson.fromJson(json, RoomCreatedMessage.class);
+        SwingUtilities.invokeLater(() -> statusLabel.setText("חדר נוצר: " + msg.roomName()));
+    }
+
+    private void handleRoomCancelled(JsonObject json) {
+        RoomCancelledMessage msg = gson.fromJson(json, RoomCancelledMessage.class);
+        SwingUtilities.invokeLater(() -> statusLabel.setText("חדר בוטל: " + msg.roomName()));
+    }
+
+    private void handleError(JsonObject json) {
+        ErrorMessage err = gson.fromJson(json, ErrorMessage.class);
+        SwingUtilities.invokeLater(() -> statusLabel.setText(err.detail()));
     }
 
     private JLabel label(String text) {

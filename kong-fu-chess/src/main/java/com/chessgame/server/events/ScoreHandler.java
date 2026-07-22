@@ -1,4 +1,5 @@
 package com.chessgame.server.events;
+
 import com.chessgame.server.application.EloCalculator;
 import com.chessgame.server.repository.UserRepository;
 

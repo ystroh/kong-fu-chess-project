@@ -12,7 +12,7 @@ public final class EventBus {
     @SuppressWarnings("unchecked")
     public <T> void subscribe(Class<T> eventType, Consumer<T> listener) {
         listeners.computeIfAbsent(eventType, k -> new ArrayList<>())
-                .add((Consumer<Object>) listener);
+                 .add((Consumer<Object>) listener);
     }
 
     public void publish(Object event) {

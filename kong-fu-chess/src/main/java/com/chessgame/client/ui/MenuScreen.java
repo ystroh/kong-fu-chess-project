@@ -1,9 +1,9 @@
 package com.chessgame.client.ui;
 
-import com.chessgame.client.network.ServerConnection;
+import com.chessgame.client.network.ServerGateway;
 import com.chessgame.common.model.Piece;
-import com.chessgame.common.protocol.request.MessageType;
-import com.chessgame.common.protocol.request.PlayMessage;
+import com.chessgame.common.protocol.response.RoleMessage;
+import com.chessgame.common.protocol.response.ServerMessageType;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -15,15 +15,15 @@ public final class MenuScreen extends JFrame {
     private static final Color ACCENT_GOLD = new Color(212, 175, 55);
     private static final Font BUTTON_FONT = new Font("SansSerif", Font.BOLD, 16);
 
-    private final ServerConnection connection;
+    private final ServerGateway gateway;
     private final String username;
     private final Consumer<Piece.Color> onGameStarted;
     private final Gson gson = new Gson();
     private JLabel statusLabel;
 
-    public MenuScreen(ServerConnection connection, String username, Consumer<Piece.Color> onGameStarted) {
+    public MenuScreen(ServerGateway gateway, String username, Consumer<Piece.Color> onGameStarted) {
         super("Kong Fu Chess - Menu");
-        this.connection = connection;
+        this.gateway = gateway;
         this.username = username;
         this.onGameStarted = onGameStarted;
 
@@ -31,7 +31,7 @@ public final class MenuScreen extends JFrame {
         setSize(420, 320);
         setLocationRelativeTo(null);
 
-        connection.setMessageListener(this::handleServerMessage);
+        gateway.subscribe(this, ServerMessageType.ROLE, this::handleRole);
 
         JPanel content = new JPanel(new BorderLayout(0, 20));
         content.setBackground(Color.BLACK);
@@ -55,15 +55,16 @@ public final class MenuScreen extends JFrame {
 
         JButton playButton = buildButton("Play");
         playButton.addActionListener(e -> {
-            connection.send(toJson(MessageType.PLAY, new PlayMessage()));
+            gateway.play();
             statusLabel.setText("ממתין ליריב...");
         });
 
         JButton roomButton = buildButton("Room");
         roomButton.addActionListener(e -> {
+            gateway.unsubscribeAll(this);
             dispose();
-            RoomScreen roomScreen = new RoomScreen(connection, username, onGameStarted, () -> {
-                MenuScreen back = new MenuScreen(connection, username, onGameStarted);
+            RoomScreen roomScreen = new RoomScreen(gateway, onGameStarted, () -> {
+                MenuScreen back = new MenuScreen(gateway, username, onGameStarted);
                 back.setVisible(true);
             });
             roomScreen.setVisible(true);
@@ -83,22 +84,12 @@ public final class MenuScreen extends JFrame {
         return body;
     }
 
-    private String toJson(MessageType type, Object payload) {
-        JsonObject json = gson.toJsonTree(payload).getAsJsonObject();
-        json.addProperty("type", type.name());
-        return json.toString();
-    }
-
-    private void handleServerMessage(String message) {
+    private void handleRole(JsonObject json) {
+        RoleMessage msg = gson.fromJson(json, RoleMessage.class);
         SwingUtilities.invokeLater(() -> {
-            if (message.startsWith("ROLE:")) {
-                String value = message.substring("ROLE:".length());
-                Piece.Color color = value.equals("SPECTATOR") ? null : Piece.Color.valueOf(value);
-                dispose();
-                onGameStarted.accept(color);
-            } else {
-                statusLabel.setText(message);
-            }
+            gateway.unsubscribeAll(this);
+            dispose();
+            onGameStarted.accept(msg.color());
         });
     }
 
