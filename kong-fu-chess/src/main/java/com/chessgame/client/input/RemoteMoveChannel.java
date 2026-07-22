@@ -1,7 +1,7 @@
 package com.chessgame.client.input;
 
 import com.chessgame.client.network.ServerGateway;
-import com.chessgame.client.ui.GameWindow;
+import com.chessgame.client.ui.GameStateCoordinator;
 import com.chessgame.common.engine.GameSnapshot;
 import com.chessgame.common.engine.MoveChannel;
 import com.chessgame.common.engine.MoveResult;
@@ -10,11 +10,11 @@ import com.chessgame.common.model.Position;
 public final class RemoteMoveChannel implements MoveChannel {
 
     private final ServerGateway gateway;
-    private final GameWindow gameWindow;
+    private final GameStateCoordinator coordinator;
 
-    public RemoteMoveChannel(ServerGateway gateway, GameWindow gameWindow) {
+    public RemoteMoveChannel(ServerGateway gateway, GameStateCoordinator coordinator) {
         this.gateway = gateway;
-        this.gameWindow = gameWindow;
+        this.coordinator = coordinator;
     }
 
     @Override
@@ -31,7 +31,7 @@ public final class RemoteMoveChannel implements MoveChannel {
 
     @Override
     public GameSnapshot snapshot(Position selected) {
-        GameSnapshot latest = gameWindow.currentSnapshot();
+        GameSnapshot latest = coordinator.currentSnapshot();
         if (latest == null) {
             return null;
         }

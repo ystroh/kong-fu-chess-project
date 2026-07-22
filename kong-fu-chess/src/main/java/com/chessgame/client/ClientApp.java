@@ -4,6 +4,7 @@ import com.chessgame.client.network.ServerConnection;
 import com.chessgame.client.network.ServerGateway;
 import com.chessgame.client.network.WebSocketServerConnection;
 import com.chessgame.client.ui.AuthScreen;
+import com.chessgame.client.ui.GameStateCoordinator;
 import com.chessgame.client.ui.GameWindow;
 import com.chessgame.client.ui.MenuScreen;
 import com.chessgame.common.model.Piece;
@@ -14,7 +15,7 @@ public final class ClientApp {
 
     private String savedUsername;
     private String savedPassword;
-    private GameWindow activeGameWindow;
+    private ServerGateway activeGateway;
 
     public void start() {
         ServerConnection connection = new WebSocketServerConnection(SERVER_URL);
@@ -42,18 +43,21 @@ public final class ClientApp {
     }
 
     private void startGame(ServerGateway gateway, Piece.Color myColor, String username) {
+        this.activeGateway = gateway;
         String whiteName = myColor == Piece.Color.WHITE ? username : "Opponent";
         String blackName = myColor == Piece.Color.BLACK ? username : "Opponent";
 
-        activeGameWindow = new GameWindow(gateway, myColor, whiteName, blackName);
-        activeGameWindow.setDisconnectCallback(() -> attemptReconnect(gateway));
-        activeGameWindow.init();
+        GameStateCoordinator coordinator = new GameStateCoordinator(gateway, myColor);
+        coordinator.setDisconnectCallback(this::attemptReconnect);
+
+        GameWindow gameWindow = new GameWindow(coordinator, whiteName, blackName);
+        gameWindow.init();
     }
 
-    private void attemptReconnect(ServerGateway gateway) {
+    private void attemptReconnect() {
         ServerConnection newConnection = new WebSocketServerConnection(SERVER_URL);
-        gateway.updateConnection(newConnection);
-        gateway.login(savedUsername, savedPassword);
+        activeGateway.updateConnection(newConnection);
+        activeGateway.login(savedUsername, savedPassword);
     }
 
     public static void main(String[] args) {
