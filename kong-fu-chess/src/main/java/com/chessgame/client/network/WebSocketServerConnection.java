@@ -10,6 +10,7 @@ public final class WebSocketServerConnection implements ServerConnection {
 
     private final WebSocket socket;
     private volatile Consumer<String> messageListener;
+    private volatile Runnable disconnectListener;
 
     public WebSocketServerConnection(String serverUrl) {
         HttpClient httpClient = HttpClient.newHttpClient();
@@ -26,6 +27,11 @@ public final class WebSocketServerConnection implements ServerConnection {
     @Override
     public void setMessageListener(Consumer<String> listener) {
         this.messageListener = listener;
+    }
+
+    @Override
+    public void setDisconnectListener(Runnable listener) {
+        this.disconnectListener = listener;
     }
 
     private final class Listener implements WebSocket.Listener {
@@ -46,8 +52,18 @@ public final class WebSocketServerConnection implements ServerConnection {
         }
 
         @Override
+        public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
+            if (disconnectListener != null) {
+                disconnectListener.run();
+            }
+            return null;
+        }
+
+        @Override
         public void onError(WebSocket webSocket, Throwable error) {
-            error.printStackTrace();
+            if (disconnectListener != null) {
+                disconnectListener.run();
+            }
         }
     }
 }

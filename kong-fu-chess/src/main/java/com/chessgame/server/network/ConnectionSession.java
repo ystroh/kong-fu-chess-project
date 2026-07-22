@@ -2,15 +2,29 @@ package com.chessgame.server.network;
 
 import com.chessgame.server.GameMatch;
 import com.chessgame.server.PlayerConnection;
+import com.chessgame.server.application.ServerSocketConnection;
+
 
 public final class ConnectionSession {
 
     public enum State { OPEN, AUTHENTICATED, IN_GAME }
 
+    private final ServerSocketConnection connection;
     private State state = State.OPEN;
-    private String username;
     private PlayerConnection playerConnection;
     private GameMatch match;
+
+    private String username;
+    private int rating = 1200;
+
+    public int rating() { return rating; }
+    public void setRating(int rating) { this.rating = rating; }
+    public ConnectionSession(ServerSocketConnection connection) {
+        this.connection = connection;
+    }
+
+    public ServerSocketConnection connection() { return connection; }
+    public void send(String message) { connection.send(message); }
 
     public State state() { return state; }
     public void setState(State state) { this.state = state; }

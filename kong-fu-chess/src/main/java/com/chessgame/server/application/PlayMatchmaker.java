@@ -2,30 +2,30 @@ package com.chessgame.server.application;
 
 import com.chessgame.server.network.ConnectionSession;
 import com.chessgame.server.PlayerConnection;
-import com.chessgame.server.application.ServerSocketConnection;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class PlayMatchmaker {
+
+    private static final int RATING_RANGE = 100;
 
     public record Pairing(
             ConnectionSession whiteSession, PlayerConnection white,
             ConnectionSession blackSession, PlayerConnection black) {}
 
-    private ConnectionSession waitingSession;
-    private ServerSocketConnection waitingConnection;
+    private final List<ConnectionSession> waiting = new ArrayList<>();
 
-    public Pairing tryPair(ConnectionSession session, ServerSocketConnection connection) {
-        if (waitingSession == null) {
-            waitingSession = session;
-            waitingConnection = connection;
-            return null;
+    public synchronized Pairing tryPair(ConnectionSession session) {
+        for (ConnectionSession candidate : waiting) {
+            if (Math.abs(candidate.rating() - session.rating()) <= RATING_RANGE) {
+                waiting.remove(candidate);
+                PlayerConnection white = new PlayerConnection(candidate.connection(), PlayerConnection.Role.WHITE);
+                PlayerConnection black = new PlayerConnection(session.connection(), PlayerConnection.Role.BLACK);
+                return new Pairing(candidate, white, session, black);
+            }
         }
-
-        PlayerConnection white = new PlayerConnection(waitingConnection, PlayerConnection.Role.WHITE);
-        PlayerConnection black = new PlayerConnection(connection, PlayerConnection.Role.BLACK);
-        Pairing pairing = new Pairing(waitingSession, white, session, black);
-
-        waitingSession = null;
-        waitingConnection = null;
-        return pairing;
+        waiting.add(session);
+        return null;
     }
 }

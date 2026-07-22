@@ -1,8 +1,7 @@
-package com.chessgame.server;
+package com.chessgame.server.engine;
 
 
 import com.chessgame.common.model.Board;
-import com.chessgame.server.engine.GameEngine;
 import com.chessgame.server.io.BoardParser;
 import com.chessgame.server.model.GameState;
 import com.chessgame.server.realtime.RealTimeArbiter;
