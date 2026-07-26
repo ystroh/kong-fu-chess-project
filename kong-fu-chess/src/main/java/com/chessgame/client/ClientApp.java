@@ -50,7 +50,8 @@ public final class ClientApp {
         GameStateCoordinator coordinator = new GameStateCoordinator(gateway, myColor);
         coordinator.setDisconnectCallback(this::attemptReconnect);
 
-        GameWindow gameWindow = new GameWindow(coordinator, whiteName, blackName);
+        GameWindow gameWindow = new GameWindow(coordinator, whiteName, blackName,
+                () -> showMenu(gateway, username));
         gameWindow.init();
     }
 

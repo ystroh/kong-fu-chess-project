@@ -20,13 +20,14 @@ public final class RemoteMoveChannel implements MoveChannel {
     @Override
     public MoveResult requestMove(Position from, Position to) {
         gateway.sendMove(from, to);
-        return MoveResult.accepted();
+        // אופטימי-בלבד: התוצאה-האמיתית (capture/gameOver/winner) מגיעה בנפרד, דרך ACTION_OCCURRED
+        return MoveResult.accepted(false, false, null);
     }
 
     @Override
     public MoveResult requestJump(Position at) {
         gateway.sendJump(at);
-        return MoveResult.accepted();
+        return MoveResult.accepted(false, false, null);
     }
 
     @Override

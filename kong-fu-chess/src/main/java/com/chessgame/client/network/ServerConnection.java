@@ -1,9 +1,5 @@
 package com.chessgame.client.network;
 
-
-import java.util.function.Consumer;
-
-
 import java.util.function.Consumer;
 
 public interface ServerConnection {

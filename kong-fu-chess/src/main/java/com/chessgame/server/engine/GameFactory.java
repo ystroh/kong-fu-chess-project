@@ -1,6 +1,5 @@
 package com.chessgame.server.engine;
 
-
 import com.chessgame.common.model.Board;
 import com.chessgame.server.io.BoardParser;
 import com.chessgame.server.model.GameState;
@@ -12,13 +11,13 @@ public final class GameFactory {
 
     private static final String STANDARD_POSITION =
             "bR bN bB bQ bK bB bN bR\n" +
-                    "bP bP bP bP bP bP bP bP\n" +
-                    ".  .  .  .  .  .  .  .\n" +
-                    ".  .  .  .  .  .  .  .\n" +
-                    ".  .  .  .  .  .  .  .\n" +
-                    ".  .  .  .  .  .  .  .\n" +
-                    "wP wP wP wP wP wP wP wP\n" +
-                    "wR wN wB wQ wK wB wN wR";
+            "bP bP bP bP bP bP bP bP\n" +
+            ".  .  .  .  .  .  .  .\n" +
+            ".  .  .  .  .  .  .  .\n" +
+            ".  .  .  .  .  .  .  .\n" +
+            ".  .  .  .  .  .  .  .\n" +
+            "wP wP wP wP wP wP wP wP\n" +
+            "wR wN wB wQ wK wB wN wR";
 
     private GameFactory() {
     }

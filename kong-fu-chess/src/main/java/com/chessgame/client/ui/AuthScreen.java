@@ -25,8 +25,8 @@ public final class AuthScreen extends JFrame {
     private String pendingPassword;
 
     public AuthScreen(ServerGateway gateway,
-                      BiConsumer<String, String> onAuthenticated,
-                      BiConsumer<Piece.Color, String> onResumed) {
+                       BiConsumer<String, String> onAuthenticated,
+                       BiConsumer<Piece.Color, String> onResumed) {
         super("Kong Fu Chess - Login");
         this.gateway = gateway;
         this.onAuthenticated = onAuthenticated;
@@ -49,7 +49,9 @@ public final class AuthScreen extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField usernameField = new JTextField();
+        usernameField.setHorizontalAlignment(SwingConstants.CENTER);
         JPasswordField passwordField = new JPasswordField();
+        passwordField.setHorizontalAlignment(SwingConstants.CENTER);
 
         gbc.gridy = 0;
         form.add(label("שם משתמש:"), gbc);
@@ -74,7 +76,7 @@ public final class AuthScreen extends JFrame {
         gbc.insets = new Insets(20, 0, 6, 0);
         form.add(buttons, gbc);
 
-        statusLabel = new JLabel(" ");
+        statusLabel = new JLabel(" ", SwingConstants.CENTER);
         statusLabel.setForeground(Color.RED);
         gbc.gridy = 5;
         form.add(statusLabel, gbc);
@@ -116,7 +118,7 @@ public final class AuthScreen extends JFrame {
     }
 
     private JLabel label(String text) {
-        JLabel l = new JLabel(text);
+        JLabel l = new JLabel(text, SwingConstants.CENTER);
         l.setForeground(Color.WHITE);
         return l;
     }

@@ -1,6 +1,7 @@
 package com.chessgame.client.network;
 
 import com.chessgame.common.model.Position;
+import com.chessgame.common.protocol.request.CancelPlayMessage;
 import com.chessgame.common.protocol.request.CancelRoomMessage;
 import com.chessgame.common.protocol.request.CreateRoomMessage;
 import com.chessgame.common.protocol.request.JoinRoomMessage;
@@ -10,6 +11,7 @@ import com.chessgame.common.protocol.request.MessageType;
 import com.chessgame.common.protocol.request.MoveMessage;
 import com.chessgame.common.protocol.request.PlayMessage;
 import com.chessgame.common.protocol.request.RegisterMessage;
+import com.chessgame.common.protocol.request.ResignMessage;
 import com.chessgame.common.protocol.response.ServerMessageType;
 import com.chessgame.client.logging.ClientLogger;
 import com.google.gson.Gson;
@@ -67,6 +69,14 @@ public final class ServerGateway {
 
     public void play() {
         send(MessageType.PLAY, new PlayMessage());
+    }
+
+    public void cancelPlay() {
+        send(MessageType.CANCEL_PLAY, new CancelPlayMessage());
+    }
+
+    public void resign() {
+        send(MessageType.RESIGN, new ResignMessage());
     }
 
     public void createRoom(String roomName) {

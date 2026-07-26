@@ -3,11 +3,13 @@ package com.chessgame.client.ui;
 import com.chessgame.client.input.BoardMapper;
 import com.chessgame.client.input.Controller;
 import com.chessgame.client.input.RemoteMoveChannel;
+import com.chessgame.client.network.ServerConnection;
 import com.chessgame.client.network.ServerGateway;
 import com.chessgame.common.engine.GameSnapshot;
 import com.chessgame.common.engine.MoveChannel;
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Piece;
+import com.chessgame.common.protocol.response.ActionOccurredMessage;
 import com.chessgame.common.protocol.response.GameStateMessage;
 import com.chessgame.common.protocol.response.OpponentDisconnectedMessage;
 import com.chessgame.common.protocol.response.OpponentReconnectedMessage;
@@ -33,6 +35,7 @@ public final class GameStateCoordinator {
     private Runnable disconnectCallback;
     private Consumer<Controller> onControllerReady;
     private Consumer<String> onOpponentStatusChanged;
+    private Consumer<ActionOccurredMessage> onActionOccurred;
 
     public GameStateCoordinator(ServerGateway gateway, Piece.Color myColor) {
         this.gateway = gateway;
@@ -42,8 +45,17 @@ public final class GameStateCoordinator {
 
     public void subscribeToServer() {
         gateway.subscribe(this, ServerMessageType.GAME_STATE, this::handleGameState);
+        gateway.subscribe(this, ServerMessageType.ACTION_OCCURRED, this::handleActionOccurred);
         gateway.subscribe(this, ServerMessageType.OPPONENT_DISCONNECTED, this::handleOpponentDisconnected);
         gateway.subscribe(this, ServerMessageType.OPPONENT_RECONNECTED, this::handleOpponentReconnected);
+    }
+
+    public void unsubscribeAll() {
+        gateway.unsubscribeAll(this);
+    }
+
+    public ServerGateway gateway() {
+        return gateway;
     }
 
     public void addListener(SnapshotListener listener) {
@@ -56,6 +68,10 @@ public final class GameStateCoordinator {
 
     public void onOpponentStatusChanged(Consumer<String> callback) {
         this.onOpponentStatusChanged = callback;
+    }
+
+    public void onActionOccurred(Consumer<ActionOccurredMessage> callback) {
+        this.onActionOccurred = callback;
     }
 
     public void setDisconnectCallback(Runnable callback) {
@@ -88,6 +104,15 @@ public final class GameStateCoordinator {
         }
 
         SwingUtilities.invokeLater(this::notifyListeners);
+    }
+
+    private void handleActionOccurred(JsonObject json) {
+        ActionOccurredMessage msg = gson.fromJson(json, ActionOccurredMessage.class);
+        SwingUtilities.invokeLater(() -> {
+            if (onActionOccurred != null) {
+                onActionOccurred.accept(msg);
+            }
+        });
     }
 
     private void handleOpponentDisconnected(JsonObject json) {

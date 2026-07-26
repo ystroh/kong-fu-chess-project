@@ -19,14 +19,23 @@ public final class PlayMatchmaker {
 
     private final List<ConnectionSession> waiting = new ArrayList<>();
 
+    public synchronized boolean removeIfWaiting(String username) {
+        return waiting.removeIf(s -> s.username().equals(username));
+    }
+
     public synchronized PairResult tryPair(ConnectionSession session) {
         for (ConnectionSession candidate : waiting) {
+            if (candidate.username().equals(session.username())) {
+                continue;
+            }
             if (Math.abs(candidate.rating() - session.rating()) <= RATING_RANGE) {
                 waiting.remove(candidate);
                 return new Paired(candidate.username(), candidate, session.username(), session);
             }
         }
-        waiting.add(session);
+        if (!waiting.contains(session)) {
+            waiting.add(session);
+        }
         return new Waiting();
     }
 }

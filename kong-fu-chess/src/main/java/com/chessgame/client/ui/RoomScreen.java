@@ -3,6 +3,7 @@ package com.chessgame.client.ui;
 import com.chessgame.client.network.ServerGateway;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.protocol.response.ErrorMessage;
+import com.chessgame.common.protocol.response.ParticipantRole;
 import com.chessgame.common.protocol.response.RoleMessage;
 import com.chessgame.common.protocol.response.RoomCancelledMessage;
 import com.chessgame.common.protocol.response.RoomCreatedMessage;
@@ -24,6 +25,7 @@ public final class RoomScreen extends JFrame {
     private final Gson gson = new Gson();
     private JLabel statusLabel;
     private JTextField roomField;
+    private String createdRoomName;
 
     public RoomScreen(ServerGateway gateway, Consumer<Piece.Color> onGameStarted, Runnable onBack) {
         super("Kong Fu Chess - Room");
@@ -72,6 +74,9 @@ public final class RoomScreen extends JFrame {
 
         JButton backButton = new JButton("חזרה לתפריט");
         backButton.addActionListener(e -> {
+            if (createdRoomName != null) {
+                gateway.cancelRoom(createdRoomName);
+            }
             gateway.unsubscribeAll(this);
             dispose();
             onBack.run();
@@ -98,20 +103,25 @@ public final class RoomScreen extends JFrame {
 
     private void handleRole(JsonObject json) {
         RoleMessage msg = gson.fromJson(json, RoleMessage.class);
+        Piece.Color color = msg.role() == ParticipantRole.SPECTATOR ? null : msg.color();
         SwingUtilities.invokeLater(() -> {
             gateway.unsubscribeAll(this);
             dispose();
-            onGameStarted.accept(msg.color());
+            onGameStarted.accept(color);
         });
     }
 
     private void handleRoomCreated(JsonObject json) {
         RoomCreatedMessage msg = gson.fromJson(json, RoomCreatedMessage.class);
+        createdRoomName = msg.roomName();
         SwingUtilities.invokeLater(() -> statusLabel.setText("חדר נוצר: " + msg.roomName()));
     }
 
     private void handleRoomCancelled(JsonObject json) {
         RoomCancelledMessage msg = gson.fromJson(json, RoomCancelledMessage.class);
+        if (msg.roomName().equals(createdRoomName)) {
+            createdRoomName = null;
+        }
         SwingUtilities.invokeLater(() -> statusLabel.setText("חדר בוטל: " + msg.roomName()));
     }
 
