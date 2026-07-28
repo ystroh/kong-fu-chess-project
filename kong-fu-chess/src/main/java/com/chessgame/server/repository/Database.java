@@ -7,9 +7,18 @@ import java.sql.Statement;
 
 public final class Database {
 
-    private static final String URL = "jdbc:sqlite:chessgame.db";
+    private final String url;
+    private final String user;
+    private final String password;
 
     public Database() {
+        String host = System.getenv().getOrDefault("DB_HOST", "localhost");
+        String port = System.getenv().getOrDefault("DB_PORT", "5432");
+        String dbName = System.getenv().getOrDefault("DB_NAME", "chessgame");
+        this.user = System.getenv().getOrDefault("DB_USER", "chessuser");
+        this.password = System.getenv().getOrDefault("DB_PASSWORD", "chesspass");
+        this.url = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
+
         try (Connection conn = connect();
              Statement stmt = conn.createStatement()) {
             stmt.execute("""
@@ -25,6 +34,6 @@ public final class Database {
     }
 
     public Connection connect() throws SQLException {
-        return DriverManager.getConnection(URL);
+        return DriverManager.getConnection(url, user, password);
     }
 }

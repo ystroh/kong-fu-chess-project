@@ -2,6 +2,7 @@ package com.chessgame.server.network;
 
 import com.chessgame.server.ConnectionSession;
 import com.chessgame.server.JavaWebSocketConnection;
+import com.chessgame.server.bus.NatsEventBus;
 import com.chessgame.server.logging.ServerLogger;
 import com.chessgame.server.repository.UserRepository;
 import com.google.gson.JsonParser;
@@ -17,11 +18,17 @@ public final class ChessWebSocketServer extends WebSocketServer {
 
     private final Map<WebSocket, ConnectionSession> sessions = new HashMap<>();
     private final CommandHandler commandHandler;
+    private final LocalClientGateway gateway;
 
-    public ChessWebSocketServer(int port, UserRepository userRepository) {
+    public ChessWebSocketServer(int port, UserRepository userRepository, NatsEventBus bus) {
         super(new InetSocketAddress(port));
-        ClientGateway gateway = new ClientGateway();
-        this.commandHandler = new CommandHandler(userRepository, gateway);
+        this.gateway = new LocalClientGateway();
+        this.commandHandler = new CommandHandler(userRepository, gateway, bus);
+
+        bus.subscribeWildcard("client.*.out", String.class, (subject, rawJson) -> {
+            String username = subject.split("\\.")[1];
+            gateway.sendRaw(username, rawJson);
+        });
     }
 
     @Override

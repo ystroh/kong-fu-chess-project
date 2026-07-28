@@ -1,41 +1,38 @@
 package com.chessgame.server.application;
 
-import com.chessgame.server.ConnectionSession;
+import com.chessgame.server.redis.RedisClient;
+import redis.clients.jedis.Jedis;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public final class PlayMatchmaker {
 
+    private static final String KEY = "play:waiting";
     private static final int RATING_RANGE = 100;
 
     public sealed interface PairResult permits Waiting, Paired {}
 
     public record Waiting() implements PairResult {}
 
-    public record Paired(
-            String whiteUsername, ConnectionSession whiteSession,
-            String blackUsername, ConnectionSession blackSession) implements PairResult {}
+    public record Paired(String whiteUsername, String blackUsername) implements PairResult {}
 
-    private final List<ConnectionSession> waiting = new ArrayList<>();
+    public PairResult tryPair(String username, int rating) {
+        try (Jedis jedis = RedisClient.pool().getResource()) {
+            List<String> candidates = jedis.zrangeByScore(KEY, rating - RATING_RANGE, rating + RATING_RANGE);
 
-    public synchronized boolean removeIfWaiting(String username) {
-        return waiting.removeIf(s -> s.username().equals(username));
-    }
-
-    public synchronized PairResult tryPair(ConnectionSession session) {
-        for (ConnectionSession candidate : waiting) {
-            if (candidate.username().equals(session.username())) {
-                continue;
+            for (String candidate : candidates) {
+                if (candidate.equals(username)) {
+                    continue;
+                }
+                long removed = jedis.zrem(KEY, candidate);
+                if (removed == 1) {
+                    return new Paired(candidate, username);
+                }
             }
-            if (Math.abs(candidate.rating() - session.rating()) <= RATING_RANGE) {
-                waiting.remove(candidate);
-                return new Paired(candidate.username(), candidate, session.username(), session);
-            }
+
+            jedis.zadd(KEY, rating, username);
+            return new Waiting();
         }
-        if (!waiting.contains(session)) {
-            waiting.add(session);
-        }
-        return new Waiting();
     }
 }

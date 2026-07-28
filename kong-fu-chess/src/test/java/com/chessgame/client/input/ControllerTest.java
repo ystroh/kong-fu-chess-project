@@ -1,0 +1,122 @@
+package com.chessgame.client.input;
+
+import com.chessgame.common.model.Piece;
+import com.chessgame.common.model.Position;
+import com.chessgame.common.rules.MoveReason;
+import com.chessgame.server.engine.GameEngine;
+import com.chessgame.common.model.Board;
+import com.chessgame.server.model.GameState;
+import com.chessgame.server.io.BoardParser;
+import com.chessgame.server.realtime.RealTimeArbiter;
+import com.chessgame.server.rules.PieceRules;
+import com.chessgame.server.rules.RuleEngine;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+class ControllerTest {
+
+    private Board board;
+    private Controller controller;
+
+    @BeforeEach
+    void setUp() {
+        board = new BoardParser().parse("wK bR .\n. . .\n. . .");
+        GameState gameState = new GameState();
+        RuleEngine ruleEngine = new RuleEngine(board, new PieceRules());
+        RealTimeArbiter arbiter = new RealTimeArbiter(board);
+        GameEngine engine = new GameEngine(board, gameState, ruleEngine, arbiter);
+        BoardMapper mapper = new BoardMapper(board);
+        controller = new Controller(mapper, engine);
+    }
+
+    @Test
+    void firstClickOnEmptyCell_isIgnored() {
+        ControllerResult result = controller.click(150, 50);
+
+        assertFalse(result.requestedMove());
+    }
+
+    @Test
+    void firstClickOnAPiece_selectsItWithoutRequestingAMove() {
+        ControllerResult result = controller.click(50, 50);
+
+        assertFalse(result.requestedMove());
+    }
+
+    @Test
+    void secondClickOnEmptyCell_requestsAMove() {
+        controller.click(50, 50);
+        ControllerResult result = controller.click(50, 150);
+
+        assertTrue(result.requestedMove());
+        assertTrue(result.moveResult().isAccepted());
+    }
+
+    @Test
+    void secondClickOnFriendlyPiece_sendsRequestMove_notReselect() {
+        board = new BoardParser().parse("wK wR .\n. . .\n. . .");
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
+        controller = new Controller(new BoardMapper(board), engine);
+
+        controller.click(50, 50);
+        ControllerResult result = controller.click(150, 50);
+
+        assertTrue(result.requestedMove());
+        assertFalse(result.moveResult().isAccepted());
+        assertEquals(MoveReason.FRIENDLY_DESTINATION, result.moveResult().reason());
+    }
+
+    @Test
+    void knightCanCaptureFriendlyPieceThroughController() {
+        board = new BoardParser().parse(". . .\n. . wP\n. . .");
+        board.addPiece(new Piece("n", Piece.Color.WHITE, Piece.Kind.KNIGHT, new Position(0, 0)));
+        GameState gameState = new GameState();
+        GameEngine engine = new GameEngine(board, gameState, new RuleEngine(board, new PieceRules()), new RealTimeArbiter(board));
+        controller = new Controller(new BoardMapper(board), engine);
+
+        controller.click(50, 50);
+        ControllerResult result = controller.click(250, 150);
+
+        assertTrue(result.requestedMove());
+        assertTrue(result.moveResult().isAccepted());
+    }
+
+    @Test
+    void clickOutsideBoard_withNoSelection_isIgnored() {
+        ControllerResult result = controller.click(-10, -10);
+
+        assertFalse(result.requestedMove());
+    }
+
+    @Test
+    void clickOutsideBoard_withActiveSelection_cancelsSelectionWithoutSendingACommand() {
+        controller.click(50, 50);
+
+        ControllerResult result = controller.click(-10, -10);
+
+        assertFalse(result.requestedMove());
+
+        ControllerResult next = controller.click(50, 150);
+        assertFalse(next.requestedMove());
+    }
+
+    @Test
+    void secondClickAlwaysClearsSelection_evenWhenMoveIsRejected() {
+        controller.click(50, 50);
+        controller.click(250, 250);
+
+        ControllerResult next = controller.click(50, 150);
+        assertFalse(next.requestedMove());
+    }
+
+    @Test
+    void jump_requestsAJumpDirectly() {
+        ControllerResult result = controller.jump(150, 50);
+
+        assertTrue(result.requestedMove());
+        assertTrue(result.moveResult().isAccepted());
+    }
+}
