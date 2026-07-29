@@ -17,8 +17,16 @@ public final class NatsSubjects {
         return "game." + gameId + ".player-reconnected";
     }
 
+    public static String gameEnded(String gameId) {
+        return "game." + gameId + ".ended";
+    }
+
     public static String clientOutbox(String username) {
         return "client." + username + ".out";
+    }
+
+    public static String sessionAssigned(String username) {
+        return "session." + username + ".assigned";
     }
 
     public static String matchmakingRequest() {
@@ -33,8 +41,8 @@ public final class NatsSubjects {
         return "match.found";
     }
 
-    public static String matchAssigned() {
-        return "match.assigned";
+    public static String shardAssign(String shardId) {
+        return "shard." + shardId + ".assign";
     }
 
     public static String roomsCreate() {
@@ -51,13 +59,5 @@ public final class NatsSubjects {
 
     public static String reconnectKey(String username) {
         return "reconnect:" + username;
-    }
-
-    public static String sessionAssigned(String username) {
-        return "session." + username + ".assigned";
-    }
-
-    public static String shardAssign(String shardId) {
-        return "shard." + shardId + ".assign";
     }
 }

@@ -3,6 +3,7 @@ package com.chessgame.server.shard;
 import com.chessgame.server.GameMatch;
 import com.chessgame.server.application.MatchLauncher;
 import com.chessgame.server.bus.CommandEnvelope;
+import com.chessgame.server.bus.GameEnded;
 import com.chessgame.server.bus.MatchAssignment;
 import com.chessgame.server.bus.NatsEventBus;
 import com.chessgame.server.bus.NatsSubjects;
@@ -53,6 +54,7 @@ public final class GameShardController {
             disconnectedSub.unsubscribe();
             reconnectedSub.unsubscribe();
             activeGameCount.decrementAndGet();
+            bus.publish(NatsSubjects.gameEnded(assignment.gameId()), new GameEnded(assignment.gameId()));
         });
     }
 }

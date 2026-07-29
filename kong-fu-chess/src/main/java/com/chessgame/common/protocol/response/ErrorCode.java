@@ -5,5 +5,6 @@ public enum ErrorCode {
     WRONG_PASSWORD,
     USERNAME_TAKEN,
     ROOM_NOT_FOUND,
+    ROOM_ALREADY_EXISTS,
     NO_OPPONENT_FOUND
 }

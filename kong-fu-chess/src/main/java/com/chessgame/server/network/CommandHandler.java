@@ -131,7 +131,6 @@ public final class CommandHandler {
     private void handleCreateRoom(ConnectionSession session, CreateRoomMessage msg) {
         if (session.state() != ConnectionSession.State.AUTHENTICATED) return;
         bus.publish(NatsSubjects.roomsCreate(), new RoomCreateRequest(msg.roomName(), session.username()));
-        session.send(ServerMessageType.ROOM_CREATED, new RoomCreatedMessage(msg.roomName()));
     }
 
     private void handleJoinRoom(ConnectionSession session, JoinRoomMessage msg) {
