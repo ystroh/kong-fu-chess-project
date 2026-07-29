@@ -10,7 +10,7 @@ import com.chessgame.client.ui.MenuScreen;
 import com.chessgame.common.model.Piece;
 
 public final class ClientApp {
-
+//private static final String SERVER_URL = "ws://192.168.33.100:8887";
     private static final String SERVER_URL = "ws://localhost:8887";
 
     private String savedUsername;
