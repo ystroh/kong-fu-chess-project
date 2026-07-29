@@ -4,13 +4,14 @@ import com.chessgame.common.model.Piece;
 import com.chessgame.common.protocol.response.ParticipantRole;
 import com.chessgame.common.protocol.response.RoleMessage;
 import com.chessgame.common.protocol.response.ServerMessageType;
-import com.chessgame.server.bus.GameEnded;
-import com.chessgame.server.bus.MatchAssignment;
-import com.chessgame.server.bus.MatchFound;
-import com.chessgame.server.bus.NatsEventBus;
-import com.chessgame.server.bus.NatsSubjects;
-import com.chessgame.server.bus.SessionAssignment;
-import com.chessgame.server.network.MessageSerializer;
+import com.chessgame.server.common.bus.GameCreated;
+import com.chessgame.server.common.bus.GameEnded;
+import com.chessgame.server.common.bus.MatchAssignment;
+import com.chessgame.server.common.bus.MatchFound;
+import com.chessgame.server.common.bus.NatsEventBus;
+import com.chessgame.server.common.bus.NatsSubjects;
+import com.chessgame.server.common.bus.SessionAssignment;
+import com.chessgame.server.gateway.MessageSerializer;
 
 import java.util.UUID;
 
@@ -44,6 +45,9 @@ public final class GameAllocatorController {
 
         bus.publish(NatsSubjects.shardAssign(shardId),
                 new MatchAssignment(gameId, matchFound.whiteUsername(), matchFound.blackUsername()));
+
+        bus.publish(NatsSubjects.gameCreated(),
+                new GameCreated(gameId, matchFound.whiteUsername(), matchFound.blackUsername()));
 
         sendRoleAndSession(gameId, matchFound.whiteUsername(), Piece.Color.WHITE);
         sendRoleAndSession(gameId, matchFound.blackUsername(), Piece.Color.BLACK);

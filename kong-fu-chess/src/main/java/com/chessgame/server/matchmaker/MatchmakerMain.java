@@ -1,7 +1,7 @@
 
 package com.chessgame.server.matchmaker;
 
-import com.chessgame.server.bus.NatsEventBus;
+import com.chessgame.server.common.bus.NatsEventBus;
 
 public final class MatchmakerMain {
 

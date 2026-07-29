@@ -1,22 +1,22 @@
 package com.chessgame.server.matchmaker;
 
-import com.chessgame.common.model.Piece;
 import com.chessgame.common.protocol.response.ErrorCode;
 import com.chessgame.common.protocol.response.ErrorMessage;
 import com.chessgame.common.protocol.response.ParticipantRole;
 import com.chessgame.common.protocol.response.RoleMessage;
-import com.chessgame.common.protocol.response.RoomCancelledMessage;
 import com.chessgame.common.protocol.response.RoomCreatedMessage;
 import com.chessgame.common.protocol.response.ServerMessageType;
-import com.chessgame.server.bus.MatchFound;
-import com.chessgame.server.bus.MatchmakingCancel;
-import com.chessgame.server.bus.MatchmakingRequest;
-import com.chessgame.server.bus.NatsEventBus;
-import com.chessgame.server.bus.NatsSubjects;
-import com.chessgame.server.bus.RoomCancelRequest;
-import com.chessgame.server.bus.RoomCreateRequest;
-import com.chessgame.server.bus.RoomJoinRequest;
-import com.chessgame.server.network.MessageSerializer;
+import com.chessgame.server.common.bus.GameCreated;
+import com.chessgame.server.common.bus.MatchFound;
+import com.chessgame.server.common.bus.MatchmakingCancel;
+import com.chessgame.server.common.bus.MatchmakingRequest;
+import com.chessgame.server.common.bus.NatsEventBus;
+import com.chessgame.server.common.bus.NatsSubjects;
+import com.chessgame.server.common.bus.RoomCancelRequest;
+import com.chessgame.server.common.bus.RoomCreateRequest;
+import com.chessgame.server.common.bus.RoomJoinRequest;
+import com.chessgame.server.common.bus.SpectatorJoinRequest;
+import com.chessgame.server.gateway.MessageSerializer;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -44,6 +44,7 @@ public final class MatchmakerRoomsController {
         bus.subscribe(NatsSubjects.roomsCreate(), RoomCreateRequest.class, this::onRoomCreate);
         bus.subscribe(NatsSubjects.roomsJoin(), RoomJoinRequest.class, this::onRoomJoin);
         bus.subscribe(NatsSubjects.roomsCancel(), RoomCancelRequest.class, this::onRoomCancel);
+        bus.subscribe(NatsSubjects.gameCreated(), GameCreated.class, this::onGameCreated);
         scheduler.scheduleAtFixedRate(this::checkExpiredMatchmaking, 5, 5, TimeUnit.SECONDS);
     }
 
@@ -81,7 +82,10 @@ public final class MatchmakerRoomsController {
 
         if (result instanceof RoomManager.Paired paired) {
             bus.publish(NatsSubjects.matchFound(), new MatchFound(paired.hostUsername(), paired.joinerUsername()));
-        } else if (result instanceof RoomManager.JoinedAsSpectator) {
+        } else if (result instanceof RoomManager.JoinedAsSpectator spectator) {
+            if (spectator.gameId() != null) {
+                bus.publish(NatsSubjects.spectatorJoin(spectator.gameId()), new SpectatorJoinRequest(request.username()));
+            }
             sendToClient(request.username(), ServerMessageType.ROLE, new RoleMessage(ParticipantRole.SPECTATOR, null));
         } else if (result instanceof RoomManager.NotFound) {
             sendError(request.username(), ErrorCode.ROOM_NOT_FOUND, "Room not found");
@@ -90,6 +94,10 @@ public final class MatchmakerRoomsController {
 
     private void onRoomCancel(RoomCancelRequest request) {
         roomManager.cancel(request.roomName());
+    }
+
+    private void onGameCreated(GameCreated event) {
+        roomManager.onGameCreated(event.whiteUsername(), event.gameId());
     }
 
     private void sendError(String username, ErrorCode code, String message) {

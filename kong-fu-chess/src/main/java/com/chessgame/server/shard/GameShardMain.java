@@ -1,9 +1,7 @@
 package com.chessgame.server.shard;
 
-import com.chessgame.server.application.MatchLauncher;
-import com.chessgame.server.bus.NatsEventBus;
-import com.chessgame.server.network.ClientGateway;
-import com.chessgame.server.network.NatsClientGateway;
+import com.chessgame.server.shard.application.MatchLauncher;
+import com.chessgame.server.common.bus.NatsEventBus;
 import com.chessgame.server.repository.Database;
 import com.chessgame.server.repository.UserRepository;
 

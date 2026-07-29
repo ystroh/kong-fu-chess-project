@@ -1,14 +1,14 @@
 package com.chessgame.server.shard;
 
-import com.chessgame.server.GameMatch;
-import com.chessgame.server.application.MatchLauncher;
-import com.chessgame.server.bus.CommandEnvelope;
-import com.chessgame.server.bus.GameEnded;
-import com.chessgame.server.bus.MatchAssignment;
-import com.chessgame.server.bus.NatsEventBus;
-import com.chessgame.server.bus.NatsSubjects;
-import com.chessgame.server.bus.PlayerDisconnected;
-import com.chessgame.server.bus.PlayerReconnected;
+import com.chessgame.server.shard.application.MatchLauncher;
+import com.chessgame.server.common.bus.CommandEnvelope;
+import com.chessgame.server.common.bus.GameEnded;
+import com.chessgame.server.common.bus.MatchAssignment;
+import com.chessgame.server.common.bus.NatsEventBus;
+import com.chessgame.server.common.bus.NatsSubjects;
+import com.chessgame.server.common.bus.PlayerDisconnected;
+import com.chessgame.server.common.bus.PlayerReconnected;
+import com.chessgame.server.common.bus.SpectatorJoinRequest;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -49,10 +49,15 @@ public final class GameShardController {
                 NatsSubjects.playerReconnected(assignment.gameId()), PlayerReconnected.class,
                 event -> match.onPlayerReconnected(event.color()));
 
+        NatsEventBus.Subscription spectatorJoinSub = bus.subscribe(
+                NatsSubjects.spectatorJoin(assignment.gameId()), SpectatorJoinRequest.class,
+                event -> match.addSpectator(event.username()));
+
         match.subscribeGameOver(event -> {
             commandsSub.unsubscribe();
             disconnectedSub.unsubscribe();
             reconnectedSub.unsubscribe();
+            spectatorJoinSub.unsubscribe();
             activeGameCount.decrementAndGet();
             bus.publish(NatsSubjects.gameEnded(assignment.gameId()), new GameEnded(assignment.gameId()));
         });

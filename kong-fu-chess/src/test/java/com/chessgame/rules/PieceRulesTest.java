@@ -3,8 +3,8 @@ package com.chessgame.rules;
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.model.Position;
-import com.chessgame.server.io.BoardParser;
-import com.chessgame.server.rules.PieceRules;
+import com.chessgame.server.shard.io.BoardParser;
+import com.chessgame.server.shard.rules.PieceRules;
 import org.junit.jupiter.api.Test;
 
 import java.util.Set;

@@ -6,6 +6,7 @@ import redis.clients.jedis.Jedis;
 public final class RoomManager {
 
     private static final String ROOM_KEY_PREFIX = "room:";
+    private static final String HOST_INDEX_PREFIX = "room-host:";
 
     public sealed interface JoinResult permits NotFound, Paired, JoinedAsSpectator {}
 
@@ -13,12 +14,15 @@ public final class RoomManager {
 
     public record Paired(String hostUsername, String joinerUsername) implements JoinResult {}
 
-    public record JoinedAsSpectator() implements JoinResult {}
+    public record JoinedAsSpectator(String gameId) implements JoinResult {}
 
     public boolean create(String roomName, String hostUsername) {
         try (Jedis jedis = RedisClient.pool().getResource()) {
             String key = ROOM_KEY_PREFIX + roomName;
             long fieldsSet = jedis.hsetnx(key, "host", hostUsername);
+            if (fieldsSet == 1) {
+                jedis.set(HOST_INDEX_PREFIX + hostUsername, roomName);
+            }
             return fieldsSet == 1;
         }
     }
@@ -37,13 +41,30 @@ public final class RoomManager {
                 return new Paired(host, username);
             }
 
-            return new JoinedAsSpectator();
+            String gameId = jedis.hget(key, "gameId");
+            return new JoinedAsSpectator(gameId);
+        }
+    }
+
+    public void onGameCreated(String whiteUsername, String gameId) {
+        try (Jedis jedis = RedisClient.pool().getResource()) {
+            String hostIndexKey = HOST_INDEX_PREFIX + whiteUsername;
+            String roomName = jedis.get(hostIndexKey);
+            if (roomName != null) {
+                jedis.hset(ROOM_KEY_PREFIX + roomName, "gameId", gameId);
+                jedis.del(hostIndexKey);
+            }
         }
     }
 
     public void cancel(String roomName) {
         try (Jedis jedis = RedisClient.pool().getResource()) {
-            jedis.del(ROOM_KEY_PREFIX + roomName);
+            String key = ROOM_KEY_PREFIX + roomName;
+            String host = jedis.hget(key, "host");
+            if (host != null) {
+                jedis.del(HOST_INDEX_PREFIX + host);
+            }
+            jedis.del(key);
         }
     }
 }

@@ -3,8 +3,8 @@ package com.chessgame.realtime;
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.model.Position;
-import com.chessgame.server.io.BoardParser;
-import com.chessgame.server.realtime.RealTimeArbiter;
+import com.chessgame.server.shard.io.BoardParser;
+import com.chessgame.server.shard.realtime.RealTimeArbiter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

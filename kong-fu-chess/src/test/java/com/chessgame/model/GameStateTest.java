@@ -1,6 +1,6 @@
 package com.chessgame.model;
 
-import com.chessgame.server.model.GameState;
+import com.chessgame.server.shard.model.GameState;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

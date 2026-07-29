@@ -1,0 +1,100 @@
+services:
+  nats:
+    image: nats:latest
+    ports:
+      - "4222:4222"
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: chessgame
+      POSTGRES_USER: chessuser
+      POSTGRES_PASSWORD: chesspass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chessuser -d chessgame"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  gateway:
+    build:
+      context: .
+      dockerfile: docker/gateway/Dockerfile
+    ports:
+      - "8887:8887"
+    environment:
+      SERVER_PORT: "8887"
+      NATS_URL: "nats://nats:4222"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_NAME: "chessgame"
+      DB_USER: "chessuser"
+      DB_PASSWORD: "chesspass"
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+
+  matchmaker:
+    build:
+      context: .
+      dockerfile: docker/matchmaker/Dockerfile
+    environment:
+      NATS_URL: "nats://nats:4222"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  allocator:
+    build:
+      context: .
+      dockerfile: docker/allocator/Dockerfile
+    environment:
+      NATS_URL: "nats://nats:4222"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      SHARD_IDS: "shard-1"
+      SHARD_MAX_GAMES: "200"
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+
+  game-shard:
+    build:
+      context: .
+      dockerfile: docker/shard/Dockerfile
+    environment:
+      SHARD_ID: "shard-1"
+      NATS_URL: "nats://nats:4222"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      DB_HOST: "postgres"
+      DB_PORT: "5432"
+      DB_NAME: "chessgame"
+      DB_USER: "chessuser"
+      DB_PASSWORD: "chesspass"
+    depends_on:
+      nats:
+        condition: service_started
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy

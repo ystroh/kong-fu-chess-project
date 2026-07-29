@@ -1,5 +1,5 @@
 package com.chessgame.server.allocator;
-import com.chessgame.server.bus.NatsEventBus;
+import com.chessgame.server.common.bus.NatsEventBus;
 
 public final class GameAllocatorMain {
     public static void main(String[] args) {

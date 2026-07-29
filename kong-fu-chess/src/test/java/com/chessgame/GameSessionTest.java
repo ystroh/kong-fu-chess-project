@@ -1,6 +1,6 @@
 package com.chessgame;
 
-import com.chessgame.server.io.BoardParser;
+import com.chessgame.server.shard.io.BoardParser;
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Position;
 import org.junit.jupiter.api.Test;

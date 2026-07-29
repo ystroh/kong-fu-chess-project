@@ -4,10 +4,10 @@ import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.model.Position;
 import com.chessgame.common.rules.MoveReason;
-import com.chessgame.server.io.BoardParser;
-import com.chessgame.server.rules.MoveValidation;
-import com.chessgame.server.rules.PieceRules;
-import com.chessgame.server.rules.RuleEngine;
+import com.chessgame.server.shard.io.BoardParser;
+import com.chessgame.server.shard.rules.MoveValidation;
+import com.chessgame.server.shard.rules.PieceRules;
+import com.chessgame.server.shard.rules.RuleEngine;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

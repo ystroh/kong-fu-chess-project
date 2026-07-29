@@ -2,8 +2,8 @@ package com.chessgame.io;
 
 import com.chessgame.common.model.Board;
 import com.chessgame.common.model.Position;
-import com.chessgame.server.io.BoardParser;
-import com.chessgame.server.io.BoardPrinter;
+import com.chessgame.server.shard.io.BoardParser;
+import com.chessgame.server.shard.io.BoardPrinter;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
