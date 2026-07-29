@@ -1,8 +1,6 @@
 package com.chessgame.server.events;
 
-import com.chessgame.common.protocol.response.ActionOccurredMessage;
-import com.chessgame.common.protocol.response.GameStateMessage;
-import com.chessgame.common.protocol.response.ServerMessageType;
+import com.chessgame.common.protocol.response.*;
 import com.chessgame.server.network.ClientGateway;
 
 import java.util.List;
@@ -39,5 +37,18 @@ public final class ClientNotificationHandler {
         for (String spectator : spectatorUsernames) {
             gateway.sendTo(spectator, type, msg);
         }
+    }
+
+    public void onDisconnectStatus(DisconnectStatusEvent event) {
+        String opponent = event.disconnectedColor() == com.chessgame.common.model.Piece.Color.WHITE
+                ? blackUsername : whiteUsername;
+        gateway.sendTo(opponent, ServerMessageType.OPPONENT_DISCONNECTED,
+                new OpponentDisconnectedMessage(event.remainingSeconds()));
+    }
+
+    public void onReconnect(ReconnectEvent event) {
+        String opponent = event.reconnectedColor() == com.chessgame.common.model.Piece.Color.WHITE
+                ? blackUsername : whiteUsername;
+        gateway.sendTo(opponent, ServerMessageType.OPPONENT_RECONNECTED, new OpponentReconnectedMessage());
     }
 }

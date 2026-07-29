@@ -1,6 +1,5 @@
 package com.chessgame.server.network;
 
-import com.chessgame.common.model.Piece;
 import com.chessgame.common.protocol.request.CancelPlayMessage;
 import com.chessgame.common.protocol.request.CancelRoomMessage;
 import com.chessgame.common.protocol.request.CreateRoomMessage;
@@ -14,38 +13,43 @@ import com.chessgame.common.protocol.request.ResignMessage;
 import com.chessgame.common.protocol.response.AuthOkMessage;
 import com.chessgame.common.protocol.response.ErrorCode;
 import com.chessgame.common.protocol.response.ErrorMessage;
-import com.chessgame.common.protocol.response.ParticipantRole;
-import com.chessgame.common.protocol.response.ResumeMessage;
-import com.chessgame.common.protocol.response.RoleMessage;
 import com.chessgame.common.protocol.response.RoomCancelledMessage;
 import com.chessgame.common.protocol.response.RoomCreatedMessage;
 import com.chessgame.common.protocol.response.ServerMessageType;
 import com.chessgame.server.Command;
 import com.chessgame.server.CommandParser;
 import com.chessgame.server.ConnectionSession;
-import com.chessgame.server.bus.*;
+import com.chessgame.server.bus.CommandEnvelope;
+import com.chessgame.server.bus.MatchmakingCancel;
+import com.chessgame.server.bus.MatchmakingRequest;
+import com.chessgame.server.bus.NatsEventBus;
+import com.chessgame.server.bus.NatsSubjects;
+import com.chessgame.server.bus.PlayerDisconnected;
+import com.chessgame.server.bus.ReconnectInfo;
+import com.chessgame.server.bus.RoomCancelRequest;
+import com.chessgame.server.bus.RoomCreateRequest;
+import com.chessgame.server.bus.RoomJoinRequest;
+import com.chessgame.server.redis.RedisClient;
 import com.chessgame.server.repository.PasswordHasher;
 import com.chessgame.server.repository.UserRepository;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import redis.clients.jedis.Jedis;
 
 public final class CommandHandler {
 
     private final Gson gson = new Gson();
     private final CommandParser commandParser = new CommandParser();
-    private final ClientGateway gateway;
     private final UserRepository userRepository;
     private final NatsEventBus bus;
+    private final SessionRegistry sessionRegistry;
 
-    public CommandHandler(UserRepository userRepository, LocalClientGateway gateway, NatsEventBus bus){
+    public CommandHandler(UserRepository userRepository, NatsEventBus bus, SessionRegistry sessionRegistry) {
         this.userRepository = userRepository;
-        this.gateway = gateway;
         this.bus = bus;
+        this.sessionRegistry = sessionRegistry;
     }
-
-
-
 
     public void handle(ConnectionSession session, String rawMessage) {
         JsonObject json = JsonParser.parseString(rawMessage).getAsJsonObject();
@@ -66,9 +70,15 @@ public final class CommandHandler {
     }
 
     public void handleDisconnect(ConnectionSession session) {
-        if (session.state() == ConnectionSession.State.IN_GAME) {
-            bus.publish("reconnection.disconnect", new DisconnectNotice(session.username(), session.gameId(), session.color()));
+        if (session.state() != ConnectionSession.State.IN_GAME) return;
+
+        try (Jedis jedis = RedisClient.pool().getResource()) {
+            String key = NatsSubjects.reconnectKey(session.username());
+            jedis.set(key, gson.toJson(new ReconnectInfo(session.gameId(), session.color())));
+            jedis.expire(key, 30);
         }
+
+        bus.publish(NatsSubjects.playerDisconnected(session.gameId()), new PlayerDisconnected(session.color()));
     }
 
     private void handleLogin(ConnectionSession session, LoginMessage msg) {
@@ -86,9 +96,7 @@ public final class CommandHandler {
 
         session.setUsername(msg.username());
         session.setRating(user.get().rating());
-        gateway.register(msg.username(), session.connection());
-
-        bus.publish("reconnection.attempt", new ReconnectAttempt(msg.username()));
+        sessionRegistry.register(msg.username(), session);
 
         session.send(ServerMessageType.AUTH_OK, new AuthOkMessage(msg.username()));
         session.setState(ConnectionSession.State.AUTHENTICATED);
@@ -105,7 +113,7 @@ public final class CommandHandler {
         userRepository.create(msg.username(), msg.password());
         session.setUsername(msg.username());
         session.setRating(UserRepository.STARTING_RATING);
-        gateway.register(msg.username(), session.connection());
+        sessionRegistry.register(msg.username(), session);
 
         session.send(ServerMessageType.AUTH_OK, new AuthOkMessage(msg.username()));
         session.setState(ConnectionSession.State.AUTHENTICATED);
@@ -113,44 +121,46 @@ public final class CommandHandler {
 
     private void handlePlay(ConnectionSession session) {
         if (session.state() != ConnectionSession.State.AUTHENTICATED) return;
-        bus.publish("matchmaking.request", new MatchmakingRequest(session.username(), session.rating()));
+        bus.publish(NatsSubjects.matchmakingRequest(), new MatchmakingRequest(session.username(), session.rating()));
     }
 
     private void handleCancelPlay(ConnectionSession session, CancelPlayMessage msg) {
-        bus.publish("matchmaking.cancel", new MatchmakingCancel(session.username()));
+        bus.publish(NatsSubjects.matchmakingCancel(), new MatchmakingCancel(session.username()));
     }
 
     private void handleCreateRoom(ConnectionSession session, CreateRoomMessage msg) {
         if (session.state() != ConnectionSession.State.AUTHENTICATED) return;
-        bus.publish("rooms.create", new RoomCreateRequest(msg.roomName(), session.username()));
+        bus.publish(NatsSubjects.roomsCreate(), new RoomCreateRequest(msg.roomName(), session.username()));
         session.send(ServerMessageType.ROOM_CREATED, new RoomCreatedMessage(msg.roomName()));
     }
 
     private void handleJoinRoom(ConnectionSession session, JoinRoomMessage msg) {
         if (session.state() != ConnectionSession.State.AUTHENTICATED) return;
-        bus.publish("rooms.join", new RoomJoinRequest(msg.roomName(), session.username()));
+        bus.publish(NatsSubjects.roomsJoin(), new RoomJoinRequest(msg.roomName(), session.username()));
     }
 
     private void handleCancelRoom(ConnectionSession session, CancelRoomMessage msg) {
         if (session.state() != ConnectionSession.State.AUTHENTICATED) return;
-        bus.publish("rooms.cancel", new RoomCancelRequest(msg.roomName()));
+        bus.publish(NatsSubjects.roomsCancel(), new RoomCancelRequest(msg.roomName()));
         session.send(ServerMessageType.ROOM_CANCELLED, new RoomCancelledMessage(msg.roomName()));
     }
 
     private void handleMove(ConnectionSession session, MoveMessage msg) {
         if (session.state() != ConnectionSession.State.IN_GAME) return;
-        Command command = commandParser.parseMove(msg, session.color());
-        bus.publish("game." + session.gameId() + ".commands", CommandEnvelope.of(command));
+        publishCommand(session, commandParser.parseMove(msg, session.color()));
     }
 
     private void handleJump(ConnectionSession session, JumpMessage msg) {
         if (session.state() != ConnectionSession.State.IN_GAME) return;
-        Command command = commandParser.parseJump(msg, session.color());
-        bus.publish("game." + session.gameId() + ".commands", CommandEnvelope.of(command));
+        publishCommand(session, commandParser.parseJump(msg, session.color()));
     }
 
     private void handleResign(ConnectionSession session, ResignMessage msg) {
         if (session.state() != ConnectionSession.State.IN_GAME) return;
-        bus.publish("game." + session.gameId() + ".commands", CommandEnvelope.of(new Command.Resign(session.color())));
+        publishCommand(session, new Command.Resign(session.color()));
+    }
+
+    private void publishCommand(ConnectionSession session, Command command) {
+        bus.publish(NatsSubjects.commands(session.gameId()), CommandEnvelope.of(command));
     }
 }

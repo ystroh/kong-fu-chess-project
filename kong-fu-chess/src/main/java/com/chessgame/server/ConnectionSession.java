@@ -14,7 +14,7 @@ public final class ConnectionSession {
     private String username;
     private int rating = 1200;
     private Piece.Color color;
-    private GameMatch match;
+    private String gameId;
 
     public ConnectionSession(ServerSocketConnection connection) {
         this.connection = connection;
@@ -61,11 +61,11 @@ public final class ConnectionSession {
         this.color = color;
     }
 
-    public GameMatch match() {
-        return match;
+    public String gameId() {
+        return gameId;
     }
 
-    public void setMatch(GameMatch match) {
-        this.match = match;
+    public void setGameId(String gameId) {
+        this.gameId = gameId;
     }
 }

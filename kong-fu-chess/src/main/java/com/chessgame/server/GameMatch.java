@@ -4,16 +4,22 @@ import com.chessgame.common.engine.GameSnapshot;
 import com.chessgame.common.model.Piece;
 import com.chessgame.common.model.Position;
 import com.chessgame.server.engine.GameEngine;
-import com.chessgame.server.events.ClientNotificationHandler;
 import com.chessgame.server.events.ActionOccurredEvent;
+import com.chessgame.server.events.ClientNotificationHandler;
+import com.chessgame.server.events.DisconnectStatusEvent;
 import com.chessgame.server.events.EventBus;
 import com.chessgame.server.events.GameOverEvent;
 import com.chessgame.server.events.LogHandler;
+import com.chessgame.server.events.ReconnectEvent;
 import com.chessgame.server.events.SnapshotUpdatedEvent;
 import com.chessgame.server.network.ClientGateway;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +28,7 @@ import java.util.function.Consumer;
 public final class GameMatch {
 
     private static final int TICK_MS = 33;
+    private static final int DISCONNECT_TIMEOUT_SECONDS = 20;
 
     private final String gameId;
     private final GameEngine engine;
@@ -32,6 +39,8 @@ public final class GameMatch {
     private final EventBus eventBus = new EventBus();
     private final ClientNotificationHandler notificationHandler;
     private final LogHandler logHandler;
+    private final Map<Piece.Color, Instant> disconnectedSince = new EnumMap<>(Piece.Color.class);
+    private final Map<Piece.Color, Integer> lastAnnouncedRemaining = new EnumMap<>(Piece.Color.class);
 
     private volatile boolean running = true;
     private boolean gameOverAnnounced = false;
@@ -50,6 +59,8 @@ public final class GameMatch {
         eventBus.subscribe(SnapshotUpdatedEvent.class, logHandler::onSnapshotUpdated);
         eventBus.subscribe(GameOverEvent.class, logHandler::onGameOver);
         eventBus.subscribe(ActionOccurredEvent.class, notificationHandler::onActionOccurred);
+        eventBus.subscribe(DisconnectStatusEvent.class, notificationHandler::onDisconnectStatus);
+        eventBus.subscribe(ReconnectEvent.class, notificationHandler::onReconnect);
     }
 
     public void start() {
@@ -84,6 +95,17 @@ public final class GameMatch {
         return color == Piece.Color.WHITE ? blackUsername : whiteUsername;
     }
 
+    public void onPlayerDisconnected(Piece.Color color) {
+        disconnectedSince.put(color, Instant.now());
+        lastAnnouncedRemaining.put(color, DISCONNECT_TIMEOUT_SECONDS + 1);
+    }
+
+    public void onPlayerReconnected(Piece.Color color) {
+        disconnectedSince.remove(color);
+        lastAnnouncedRemaining.remove(color);
+        eventBus.publish(new ReconnectEvent(color));
+    }
+
     private void runLoop() {
         while (running) {
             try {
@@ -93,10 +115,32 @@ public final class GameMatch {
                 } else {
                     engine.wait(TICK_MS);
                 }
+                checkDisconnectTimeouts();
                 broadcastSnapshot();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 running = false;
+            }
+        }
+    }
+
+    private void checkDisconnectTimeouts() {
+        for (Map.Entry<Piece.Color, Instant> entry : disconnectedSince.entrySet()) {
+            Piece.Color color = entry.getKey();
+            long elapsedSeconds = Duration.between(entry.getValue(), Instant.now()).getSeconds();
+            int remaining = (int) (DISCONNECT_TIMEOUT_SECONDS - elapsedSeconds);
+
+            if (remaining <= 0) {
+                resign(color);
+                disconnectedSince.remove(color);
+                lastAnnouncedRemaining.remove(color);
+                return;
+            }
+
+            Integer lastAnnounced = lastAnnouncedRemaining.get(color);
+            if (lastAnnounced == null || lastAnnounced != remaining) {
+                lastAnnouncedRemaining.put(color, remaining);
+                eventBus.publish(new DisconnectStatusEvent(color, remaining));
             }
         }
     }

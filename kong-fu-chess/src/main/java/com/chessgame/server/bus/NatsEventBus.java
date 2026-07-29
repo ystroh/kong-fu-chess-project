@@ -8,13 +8,22 @@ import io.nats.client.Options;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.function.Consumer;
-
 
 public final class NatsEventBus implements AutoCloseable {
 
     private final Connection connection;
     private final Gson gson = new Gson();
+
+    public interface Subscription {
+        void unsubscribe();
+    }
+
+    @FunctionalInterface
+    public interface SubjectAwareHandler<T> {
+        void handle(String subject, T event);
+    }
 
     public NatsEventBus() {
         this(System.getenv().getOrDefault("NATS_URL", "nats://localhost:4222"));
@@ -24,7 +33,7 @@ public final class NatsEventBus implements AutoCloseable {
         try {
             Options options = new Options.Builder()
                     .server(natsUrl)
-                    .connectionTimeout(java.time.Duration.ofSeconds(5))
+                    .connectionTimeout(Duration.ofSeconds(5))
                     .build();
             this.connection = Nats.connect(options);
         } catch (IOException | InterruptedException e) {
@@ -33,33 +42,29 @@ public final class NatsEventBus implements AutoCloseable {
         }
     }
 
-
     public void publish(String subject, Object payload) {
         String json = gson.toJson(payload);
         connection.publish(subject, json.getBytes(StandardCharsets.UTF_8));
     }
 
-    public <T> void subscribe(String subject, Class<T> type, Consumer<T> handler) {
+    public <T> Subscription subscribe(String subject, Class<T> type, Consumer<T> handler) {
         Dispatcher dispatcher = connection.createDispatcher(msg -> {
             String json = new String(msg.getData(), StandardCharsets.UTF_8);
             T event = gson.fromJson(json, type);
             handler.accept(event);
         });
         dispatcher.subscribe(subject);
+        return () -> dispatcher.unsubscribe(subject);
     }
 
-    public <T> void subscribeWildcard(String subjectPattern, Class<T> type, SubjectAwareHandler<T> handler) {
+    public <T> Subscription subscribeWildcard(String subjectPattern, Class<T> type, SubjectAwareHandler<T> handler) {
         Dispatcher dispatcher = connection.createDispatcher(msg -> {
             String json = new String(msg.getData(), StandardCharsets.UTF_8);
             T event = gson.fromJson(json, type);
             handler.handle(msg.getSubject(), event);
         });
         dispatcher.subscribe(subjectPattern);
-    }
-
-    @FunctionalInterface
-    public interface SubjectAwareHandler<T> {
-        void handle(String subject, T event);
+        return () -> dispatcher.unsubscribe(subjectPattern);
     }
 
     @Override

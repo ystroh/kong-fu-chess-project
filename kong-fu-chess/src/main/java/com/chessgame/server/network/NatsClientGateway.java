@@ -2,6 +2,7 @@ package com.chessgame.server.network;
 
 import com.chessgame.common.protocol.response.ServerMessageType;
 import com.chessgame.server.bus.NatsEventBus;
+import com.chessgame.server.bus.NatsSubjects;
 
 public final class NatsClientGateway implements ClientGateway {
 
@@ -14,6 +15,6 @@ public final class NatsClientGateway implements ClientGateway {
     @Override
     public void sendTo(String username, ServerMessageType type, Object payload) {
         String json = MessageSerializer.serialize(type, payload);
-        bus.publish("client." + username + ".out", json);
+        bus.publish(NatsSubjects.clientOutbox(username), json);
     }
 }

@@ -18,17 +18,11 @@ public final class ChessWebSocketServer extends WebSocketServer {
 
     private final Map<WebSocket, ConnectionSession> sessions = new HashMap<>();
     private final CommandHandler commandHandler;
-    private final LocalClientGateway gateway;
 
     public ChessWebSocketServer(int port, UserRepository userRepository, NatsEventBus bus) {
         super(new InetSocketAddress(port));
-        this.gateway = new LocalClientGateway();
-        this.commandHandler = new CommandHandler(userRepository, gateway, bus);
-
-        bus.subscribeWildcard("client.*.out", String.class, (subject, rawJson) -> {
-            String username = subject.split("\\.")[1];
-            gateway.sendRaw(username, rawJson);
-        });
+        SessionRegistry sessionRegistry = new SessionRegistry(bus);
+        this.commandHandler = new CommandHandler(userRepository, bus, sessionRegistry);
     }
 
     @Override
